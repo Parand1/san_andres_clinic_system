@@ -37,7 +37,7 @@ function PatientAttentionList({ patientId, onBack, patient }) { // Añadir patie
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(`http://localhost:5000/api/attentions?paciente_id=${patientId}`, {
+      const response = await fetch(`/api/attentions?paciente_id=${patientId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

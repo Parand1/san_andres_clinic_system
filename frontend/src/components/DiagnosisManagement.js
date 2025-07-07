@@ -52,7 +52,7 @@ function DiagnosisManagement({ attentionId, readOnly, onDiagnosesChange }) { // 
     const timerId = setTimeout(async () => {
       if (cie10SearchTerm.length > 2) {
         try {
-          const response = await fetch(`http://localhost:5000/api/cie10?search=${encodeURIComponent(cie10SearchTerm)}`, {
+          const response = await fetch(`/api/cie10?search=${encodeURIComponent(cie10SearchTerm)}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           const data = await response.json();
@@ -78,7 +78,7 @@ function DiagnosisManagement({ attentionId, readOnly, onDiagnosesChange }) { // 
         setLoading(true);
         setError('');
         try {
-          const response = await fetch(`http://localhost:5000/api/diagnoses?atencion_id=${attentionId}`, {
+          const response = await fetch(`/api/diagnostics?atencion_id=${attentionId}`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -160,8 +160,8 @@ function DiagnosisManagement({ attentionId, readOnly, onDiagnosesChange }) { // 
       // Si hay attentionId, guardar en el backend
       const method = currentDiagnosis ? 'PUT' : 'POST';
       const url = currentDiagnosis
-        ? `http://localhost:5000/api/diagnoses/${currentDiagnosis.id}`
-        : `http://localhost:5000/api/diagnoses/${attentionId}`;
+        ? `/api/diagnostics/${currentDiagnosis.id}`
+        : `/api/diagnostics/${attentionId}`;
 
       const payload = {
         atencion_id: attentionId,
@@ -183,7 +183,7 @@ function DiagnosisManagement({ attentionId, readOnly, onDiagnosesChange }) { // 
         if (response.ok) {
           setSuccess(data.msg || 'Operación exitosa.');
           // Recargar diagnósticos del backend
-          const updatedDiagnoses = await fetch(`http://localhost:5000/api/diagnoses?atencion_id=${attentionId}`, {
+          const updatedDiagnoses = await fetch(`/api/diagnostics?atencion_id=${attentionId}`, {
             headers: { Authorization: `Bearer ${token}` },
           }).then(res => res.json());
           setDiagnoses(updatedDiagnoses);
@@ -227,7 +227,7 @@ function DiagnosisManagement({ attentionId, readOnly, onDiagnosesChange }) { // 
     if (attentionId) {
       // Si hay attentionId, eliminar del backend
       try {
-        const response = await fetch(`http://localhost:5000/api/diagnoses/${id}`, {
+        const response = await fetch(`/api/diagnostics/${id}`, {
           method: 'DELETE',
           headers: {
             Authorization: `Bearer ${token}`,
@@ -237,7 +237,7 @@ function DiagnosisManagement({ attentionId, readOnly, onDiagnosesChange }) { // 
         if (response.ok) {
           setSuccess(data.msg || 'Diagnóstico eliminado exitosamente.');
           // Recargar diagnósticos del backend
-          const updatedDiagnoses = await fetch(`http://localhost:5000/api/diagnoses?atencion_id=${attentionId}`, {
+          const updatedDiagnoses = await fetch(`/api/diagnostics?atencion_id=${attentionId}`, {
             headers: { Authorization: `Bearer ${token}` },
           }).then(res => res.json());
           setDiagnoses(updatedDiagnoses);

@@ -114,7 +114,7 @@ function OdontogramForm({ attentionId, onDataChange, readOnly = false }, ref) {
       setLoading(true);
       setError('');
       try {
-        const response = await fetch(`http://localhost:5000/api/odontogram/${attentionId}`, {
+        const response = await fetch(`/api/odontogram/${attentionId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();
@@ -219,10 +219,10 @@ function OdontogramForm({ attentionId, onDataChange, readOnly = false }, ref) {
       };
 
       if (odontogramExists) {
-        url = `http://localhost:5000/api/odontogram/${currentAttentionId}`;
+        url = `/api/odontogram/${currentAttentionId}`;
         method = 'PUT';
       } else {
-        url = `http://localhost:5000/api/odontogram`;
+        url = `/api/odontogram`;
         method = 'POST';
       }
 

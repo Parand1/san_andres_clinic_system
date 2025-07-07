@@ -33,7 +33,7 @@ const MedicalHistoryDetailsForm = forwardRef(({ attentionId, onDataChange, readO
       }
       setLoading(true);
       try {
-        const response = await fetch(`http://localhost:5000/api/medical-history/${attentionId}`, {
+        const response = await fetch(`/api/medical-history/${attentionId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();
@@ -64,7 +64,7 @@ const MedicalHistoryDetailsForm = forwardRef(({ attentionId, onDataChange, readO
     save: async (currentAttentionId) => {
       if (readOnly) return;
 
-      const url = `http://localhost:5000/api/medical-history/${currentAttentionId}`;
+      const url = `/api/medical-history/${currentAttentionId}`;
       const method = 'POST'; // Siempre es POST porque la ruta del backend maneja la lógica de crear o actualizar
 
       try {

@@ -6,6 +6,7 @@ const { authenticateToken, authorizeRoles } = require('../middleware/authMiddlew
 
 // Ruta para obtener todos los profesionales (solo accesible por admin)
 router.get('/', authenticateToken, authorizeRoles('admin'), async (req, res) => {
+  console.log('[/api/professionals] Solicitud recibida.');
   try {
     const allProfessionals = await pool.query(`
       SELECT

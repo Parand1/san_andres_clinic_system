@@ -41,7 +41,7 @@ function PatientSearchAndSelection({ onPatientSelect }) {
       setLoading(true);
       setError('');
       try {
-        const response = await fetch(`http://localhost:5000/api/patients?search=${encodeURIComponent(debouncedSearchTerm)}`, {
+        const response = await fetch(`/api/patients?search=${encodeURIComponent(debouncedSearchTerm)}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();

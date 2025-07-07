@@ -31,7 +31,7 @@ function PsychologyEvaluationForm({ attentionId, onSaveSuccess, onDataChange }) 
       setLoading(true);
       setError('');
       try {
-        const response = await fetch(`http://localhost:5000/api/psychology/${attentionId}`, {
+        const response = await fetch(`/api/psychology/${attentionId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();

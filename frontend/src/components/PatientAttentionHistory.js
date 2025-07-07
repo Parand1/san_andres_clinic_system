@@ -44,7 +44,7 @@ function PatientAttentionHistory({ patientId, onBack, patient }) {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(`http://localhost:5000/api/attentions?paciente_id=${patientId}`, {
+      const response = await fetch(`/api/attentions?paciente_id=${patientId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -76,10 +76,10 @@ function PatientAttentionHistory({ patientId, onBack, patient }) {
     try {
       // Cargar detalles completos de la atención
       const [detailsRes, antecedentsRes, odontogramRes, psychologyRes] = await Promise.all([
-        fetch(`http://localhost:5000/api/medical-history/${attention.id}`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`http://localhost:5000/api/antecedents/${attention.paciente_id}`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`http://localhost:5000/api/odontogram/${attention.id}`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`http://localhost:5000/api/psychology/${attention.id}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`/api/medical-history/${attention.id}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`/api/antecedents/${attention.paciente_id}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`/api/odontogram/${attention.id}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`/api/psychology-evaluation/${attention.id}`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
       const detailsData = detailsRes.ok ? await detailsRes.json() : {};

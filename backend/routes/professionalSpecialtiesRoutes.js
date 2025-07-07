@@ -5,6 +5,7 @@ const { authenticateToken, authorizeRoles } = require('../middleware/authMiddlew
 
 // Ruta para obtener todas las especialidades
 router.get('/all', authenticateToken, authorizeRoles('admin'), async (req, res) => {
+  console.log('[/api/professional-specialties/all] Solicitud recibida.');
   try {
     const allSpecialties = await pool.query('SELECT id, nombre FROM especialidades ORDER BY nombre ASC');
     res.json(allSpecialties.rows);

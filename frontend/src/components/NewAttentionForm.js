@@ -113,8 +113,8 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
 
       const attentionResponse = await fetch(
         attentionIdToUse
-          ? `http://localhost:5000/api/attentions/${attentionIdToUse}`
-          : 'http://localhost:5000/api/attentions',
+          ? `/api/attentions/${attentionIdToUse}`
+          : '/api/attentions',
         {
           method: attentionIdToUse ? 'PUT' : 'POST',
           headers: {

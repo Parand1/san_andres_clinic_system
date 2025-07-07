@@ -68,8 +68,8 @@ function PatientManagement() {
     setError('');
     try {
       const url = currentSearchTerm
-        ? `http://localhost:5000/api/patients?search=${encodeURIComponent(currentSearchTerm)}`
-        : 'http://localhost:5000/api/patients';
+        ? `/api/patients?search=${encodeURIComponent(currentSearchTerm)}`
+        : '/api/patients';
 
       const response = await fetch(url, {
         headers: {
@@ -143,8 +143,8 @@ function PatientManagement() {
 
     const method = currentPatient ? 'PUT' : 'POST';
     const url = currentPatient
-      ? `http://localhost:5000/api/patients/${currentPatient.id}`
-      : 'http://localhost:5000/api/patients';
+      ? `/api/patients/${currentPatient.id}`
+      : '/api/patients';
 
     try {
       const response = await fetch(url, {
@@ -178,7 +178,7 @@ function PatientManagement() {
     setError('');
     setSuccess('');
     try {
-      const response = await fetch(`http://localhost:5000/api/patients/${id}`, {
+      const response = await fetch(`/api/patients/${id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,

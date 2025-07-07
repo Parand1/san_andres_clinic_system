@@ -1,56 +1,44 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const cors = require('cors');
-const pool = require('./config/db'); // Importamos el pool de conexión
+const path = require('path'); // Importar path
 
 const app = express();
-const port = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
-// Importar rutas
-const authRoutes = require('./routes/authRoutes');
-const professionalRoutes = require('./routes/professionalRoutes');
-const patientRoutes = require('./routes/patientRoutes');
-const attentionRoutes = require('./routes/attentionRoutes');
-const cie10Routes = require('./routes/cie10Routes');
-const diagnosisRoutes = require('./routes/diagnosisRoutes');
-const medicalHistoryRoutes = require('./routes/medicalHistoryRoutes');
-const antecedentsRoutes = require('./routes/antecedentsRoutes');
-const odontogramRoutes = require('./routes/odontogramRoutes');
-const psychologyRoutes = require('./routes/psychologyRoutes');
-const professionalSpecialtiesRoutes = require('./routes/professionalSpecialtiesRoutes'); // Nuevo
-
-// Usar rutas
-app.use('/api/auth', authRoutes);
-app.use('/api/professionals', professionalRoutes);
-app.use('/api/patients', patientRoutes);
-app.use('/api/attentions', attentionRoutes);
-app.use('/api/cie10', cie10Routes);
-app.use('/api/diagnoses', diagnosisRoutes);
-app.use('/api/medical-history', medicalHistoryRoutes);
-app.use('/api/antecedents', antecedentsRoutes);
-app.use('/api/odontogram', odontogramRoutes);
-app.use('/api/psychology', psychologyRoutes);
-app.use('/api/professional-specialties', professionalSpecialtiesRoutes); // Nuevo
-
-// Ruta de prueba
-app.get('/', (req, res) => {
-  res.send('¡El servidor del Centro Médico San Andrés está funcionando!');
+// Middleware de logging para todas las solicitudes
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
 });
 
-// Probamos la conexión a la BD
-const checkDatabaseConnection = async () => {
-  try {
-    const result = await pool.query('SELECT NOW()');
-    console.log('Conexión a la base de datos exitosa:', result.rows[0]);
-  } catch (err) {
-    console.error('Error al conectar con la base de datos:', err.stack);
-  }
-};
+// Rutas de la API
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/professionals', require('./routes/professionalRoutes'));
+app.use('/api/patients', require('./routes/patientRoutes'));
+app.use('/api/specialties', require('./routes/professionalSpecialtiesRoutes'));
+app.use('/api/cie10', require('./routes/cie10Routes'));
+app.use('/api/attentions', require('./routes/attentionRoutes'));
+app.use('/api/medical-history', require('./routes/medicalHistoryRoutes'));
+app.use('/api/antecedents', require('./routes/antecedentsRoutes'));
+app.use('/api/odontogram', require('./routes/odontogramRoutes'));
+app.use('/api/psychology-evaluation', require('./routes/psychologyRoutes'));
+app.use('/api/diagnostics', require('./routes/diagnosisRoutes'));
 
-app.listen(port, () => {
-  console.log(`Servidor corriendo en el puerto ${port}`);
-  checkDatabaseConnection();
+// Servir archivos estáticos del frontend (después de las rutas de la API)
+app.use(express.static(path.join(__dirname, '../frontend/build')));
+
+// Para cualquier otra ruta que no sea de la API, servir el index.html del frontend
+app.get('*', (req, res) => {
+  console.log(`[${new Date().toISOString()}] Solicitud ${req.method} ${req.url} manejada por la ruta comodín (sirviendo index.html).`);
+  res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+});
+
+// Iniciar el servidor
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

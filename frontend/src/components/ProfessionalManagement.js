@@ -56,21 +56,48 @@ function ProfessionalManagement() {
     setError('');
     try {
       const [professionalsResponse, specialtiesResponse] = await Promise.all([
-        fetch('http://localhost:5000/api/professionals', {
-          headers: { Authorization: `Bearer ${token}` },
+        fetch(`/api/professionals?_t=${Date.now()}`, {
+          headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' },
+          cache: 'no-store',
         }),
-        fetch('http://localhost:5000/api/professional-specialties/all', {
-          headers: { Authorization: `Bearer ${token}` },
+        fetch(`/api/specialties/all?_t=${Date.now()}`, {
+          headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' },
+          cache: 'no-store',
         }),
       ]);
 
-      const professionalsData = await professionalsResponse.json();
-      const specialtiesData = await specialtiesResponse.json();
-
+      let professionalsData = [];
       if (professionalsResponse.ok) {
+        if (professionalsResponse.status !== 204 && professionalsResponse.status !== 304) {
+          professionalsData = await professionalsResponse.json();
+        }
         setProfessionals(professionalsData);
       } else {
-        setError(professionalsData.msg || 'Error al cargar profesionales.');
+        let errorMsg = 'Error al cargar profesionales.';
+        try {
+          const errorData = await professionalsResponse.json();
+          errorMsg = errorData.msg || errorMsg;
+        } catch (e) {
+          // Response was not JSON, use default error message
+        }
+        setError(errorMsg);
+      }
+
+      let specialtiesData = [];
+      if (specialtiesResponse.ok) {
+        if (specialtiesResponse.status !== 204 && specialtiesResponse.status !== 304) {
+          specialtiesData = await specialtiesResponse.json();
+        }
+        setAllSpecialties(specialtiesData);
+      } else {
+        let errorMsg = 'Error al cargar especialidades.';
+        try {
+          const errorData = await specialtiesResponse.json();
+          errorMsg = errorData.msg || errorMsg;
+        } catch (e) {
+          // Response was not JSON, use default error message
+        }
+        setError(errorMsg);
       }
 
       if (specialtiesResponse.ok) {
@@ -119,7 +146,7 @@ function ProfessionalManagement() {
 
     // Cargar especialidades del profesional para edición
     try {
-      const response = await fetch(`http://localhost:5000/api/professional-specialties/${professional.id}`, {
+      const response = await fetch(`/api/specialties/${professional.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
@@ -158,8 +185,8 @@ function ProfessionalManagement() {
 
     const method = currentProfessional ? 'PUT' : 'POST';
     const url = currentProfessional
-      ? `http://localhost:5000/api/professionals/${currentProfessional.id}`
-      : 'http://localhost:5000/api/auth/register';
+      ? `/api/professionals/${currentProfessional.id}`
+      : '/api/auth/register';
 
     try {
       const professionalPayload = { ...formState };
@@ -184,7 +211,7 @@ function ProfessionalManagement() {
         const professionalIdToAssign = currentProfessional ? currentProfessional.id : data.user.id; // Obtener ID del profesional
 
         // Asignar especialidades
-        const assignSpecialtiesResponse = await fetch(`http://localhost:5000/api/professional-specialties/${professionalIdToAssign}`, {
+        const assignSpecialtiesResponse = await fetch(`/api/specialties/${professionalIdToAssign}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -217,7 +244,7 @@ function ProfessionalManagement() {
     setError('');
     setSuccess('');
     try {
-      const response = await fetch(`http://localhost:5000/api/professionals/${id}`, {
+      const response = await fetch(`/api/professionals/${id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,

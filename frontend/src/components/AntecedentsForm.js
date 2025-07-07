@@ -29,7 +29,7 @@ const AntecedentsForm = forwardRef(({ patientId, onDataChange, readOnly = false 
       }
       setLoading(true);
       try {
-        const response = await fetch(`http://localhost:5000/api/antecedents/${patientId}`, {
+        const response = await fetch(`/api/antecedents/${patientId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();
@@ -60,7 +60,7 @@ const AntecedentsForm = forwardRef(({ patientId, onDataChange, readOnly = false 
     save: async (currentPatientId) => {
       if (readOnly) return;
 
-      const url = `http://localhost:5000/api/antecedents/${currentPatientId}`;
+      const url = `/api/antecedents/${currentPatientId}`;
       const method = 'POST'; // La ruta del backend maneja la lógica de crear o actualizar
 
       try {
