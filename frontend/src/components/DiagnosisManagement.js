@@ -29,7 +29,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { useAuth } from '../AuthContext';
 
-function DiagnosisManagement({ attentionId, readOnly, onDiagnosesChange }) { // Añadir readOnly y onDiagnosesChange
+function DiagnosisManagement({ attentionId, readOnly, onDiagnosesChange }, ref) { // Añadir readOnly y onDiagnosesChange
   const { token, user } = useAuth();
   const [diagnoses, setDiagnoses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -158,39 +158,50 @@ function DiagnosisManagement({ attentionId, readOnly, onDiagnosesChange }) { // 
 
     if (attentionId) {
       // Si hay attentionId, guardar en el backend
-      const method = currentDiagnosis ? 'PUT' : 'POST';
-      const url = currentDiagnosis
-        ? `/api/diagnostics/${currentDiagnosis.id}`
-        : `/api/diagnostics/${attentionId}`;
-
-      const payload = {
-        atencion_id: attentionId,
-        ...newDiagnosisData,
-      };
-
+      let response;
       try {
-        const response = await fetch(url, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
+        if (currentDiagnosis) {
+          // Actualizar un diagnóstico existente
+          response = await fetch(`/api/diagnostics/${currentDiagnosis.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(newDiagnosisData), // Solo enviar los datos que se actualizan
+          });
+        } else {
+          // Agregar un nuevo diagnóstico a una atención existente usando el endpoint batch
+          const payload = {
+            atencion_id: attentionId,
+            diagnoses: [newDiagnosisData],
+          };
+          response = await fetch(`/api/diagnostics/batch`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+          });
+        }
 
         const data = await response.json();
 
         if (response.ok) {
           setSuccess(data.msg || 'Operación exitosa.');
-          // Recargar diagnósticos del backend
-          const updatedDiagnoses = await fetch(`/api/diagnostics?atencion_id=${attentionId}`, {
+          // Recargar diagnósticos del backend para reflejar todos los cambios
+          const updatedDiagnosesResponse = await fetch(`/api/diagnostics?atencion_id=${attentionId}`, {
             headers: { Authorization: `Bearer ${token}` },
-          }).then(res => res.json());
+          });
+          const updatedDiagnoses = await updatedDiagnosesResponse.json();
           setDiagnoses(updatedDiagnoses);
-          onDiagnosesChange && onDiagnosesChange(updatedDiagnoses);
+          if (onDiagnosesChange) {
+            onDiagnosesChange(updatedDiagnoses);
+          }
           handleCloseDialog();
         } else {
-          setError(data.msg || 'Error al guardar diagnóstico.');
+          setError(data.msg || 'Error al guardar el diagnóstico.');
         }
       } catch (err) {
         console.error('Error de red:', err);
@@ -259,6 +270,52 @@ function DiagnosisManagement({ attentionId, readOnly, onDiagnosesChange }) { // 
       setSuccess('Diagnóstico eliminado localmente.');
     }
   };
+
+  // Exponer el método de guardado para el componente padre
+  useImperativeHandle(ref, () => ({
+    save: async (attentionId, diagnosesToSave) => { // Aceptar diagnósticos como argumento
+      if (!attentionId) {
+        throw new Error("Se requiere un ID de atención para guardar los diagnósticos.");
+      }
+
+      // Usar los diagnósticos pasados como argumento en lugar del estado local
+      const newDiagnoses = diagnosesToSave.filter(d => !d.id || d.id > 999999); 
+
+      if (newDiagnoses.length === 0) {
+        console.log("No hay nuevos diagnósticos para guardar.");
+        return; // No hay nuevos diagnósticos que guardar
+      }
+
+      const payload = {
+        atencion_id: attentionId,
+        diagnoses: newDiagnoses.map(({ cie10_id, tipo_diagnostico }) => ({
+          cie10_id,
+          tipo_diagnostico,
+        })),
+      };
+
+      const response = await fetch(`/api/diagnostics/batch`, { // Usar una nueva ruta para guardado en lote
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.msg || 'Error al guardar los diagnósticos en lote.');
+      }
+      
+      // Opcional: recargar los diagnósticos desde el servidor para obtener los IDs correctos
+      const updatedDiagnoses = await fetch(`/api/diagnostics?atencion_id=${attentionId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(res => res.json());
+      setDiagnoses(updatedDiagnoses);
+      onDiagnosesChange && onDiagnosesChange(updatedDiagnoses);
+    }
+  }));
 
   if (loading && attentionId) { // Solo mostrar cargando si hay attentionId
     return (

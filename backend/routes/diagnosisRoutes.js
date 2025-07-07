@@ -70,14 +70,12 @@ router.get('/:id', authenticateToken, authorizeRoles('admin', 'profesional'), as
 });
 
 // Ruta para crear o actualizar un diagnóstico para una atención
-router.post('/:atencion_id', authenticateToken, authorizeRoles('admin', 'profesional'), async (req, res) => {
-  const { atencion_id } = req.params;
-  // El cuerpo ahora puede ser un array de diagnósticos o un solo objeto
-  const diagnoses = Array.isArray(req.body) ? req.body : [req.body];
+router.post('/batch', authenticateToken, authorizeRoles('admin', 'profesional'), async (req, res) => {
+  const { atencion_id, diagnoses } = req.body;
   const professionalId = req.user.id;
 
-  if (!atencion_id) {
-    return res.status(400).json({ msg: 'ID de atención es requerido.' });
+  if (!atencion_id || !Array.isArray(diagnoses) || diagnoses.length === 0) {
+    return res.status(400).json({ msg: 'Se requiere un ID de atención y un array de diagnósticos.' });
   }
 
   const client = await pool.connect();
@@ -85,15 +83,13 @@ router.post('/:atencion_id', authenticateToken, authorizeRoles('admin', 'profesi
   try {
     await client.query('BEGIN');
 
-    // Opcional: Eliminar diagnósticos existentes para esta atención para reemplazarlos
-    // Esto simplifica la lógica a solo insertar los nuevos diagnósticos
-    await client.query('DELETE FROM diagnosticos WHERE atencion_id = $1', [atencion_id]);
-
     const results = [];
     for (const diag of diagnoses) {
       const { cie10_id, tipo_diagnostico } = diag;
       if (!cie10_id || !tipo_diagnostico) {
-        throw new Error('cie10_id y tipo_diagnostico son requeridos para cada diagnóstico.');
+        // Omitir diagnósticos inválidos o lanzar un error
+        console.warn('Omitiendo diagnóstico inválido:', diag);
+        continue;
       }
 
       const newDiagnosis = await client.query(
@@ -109,7 +105,7 @@ router.post('/:atencion_id', authenticateToken, authorizeRoles('admin', 'profesi
 
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error('Error al guardar diagnósticos:', err.message);
+    console.error('Error en el guardado en lote de diagnósticos:', err.message);
     res.status(500).send('Error del servidor');
   } finally {
     client.release();

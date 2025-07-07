@@ -151,7 +151,9 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
         savePromises.push(psychologyEvaluationFormRef.current.save(attentionIdToUse));
       }
       if (diagnosisManagementRef.current) {
-        savePromises.push(diagnosisManagementRef.current.save(attentionIdToUse));
+        // Pasar el estado local de diagnósticos directamente a la función de guardado
+        const saveDiagnosisPromise = diagnosisManagementRef.current.save(attentionIdToUse, diagnoses);
+        savePromises.push(saveDiagnosisPromise);
       }
 
       const results = await Promise.allSettled(savePromises);
