@@ -240,7 +240,7 @@ function OdontogramForm({ attentionId, onDataChange, readOnly = false }, ref) {
         if (!response.ok) {
           throw new Error(data.msg || 'Error al guardar el odontograma.');
         }
-        setOdontogramExists(true); // Marcar como existente después de un guardado exitoso
+        // NO ACTUALIZAR ESTADO AQUÍ. El componente está a punto de ser desmontado.
         return data;
       } catch (err) {
         console.error('Error saving odontogram:', err);

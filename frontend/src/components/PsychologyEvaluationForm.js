@@ -8,7 +8,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '../AuthContext';
 
-function PsychologyEvaluationForm({ attentionId, onSaveSuccess, onDataChange }) {
+const PsychologyEvaluationForm = forwardRef(({ attentionId, onSaveSuccess, onDataChange }, ref) => {
   const { token, user } = useAuth();
   const [formState, setFormState] = useState({
     motivo_consulta_psicologia: '',
@@ -70,6 +70,45 @@ function PsychologyEvaluationForm({ attentionId, onSaveSuccess, onDataChange }) 
     setFormState((prev) => ({ ...prev, [name]: value }));
     onDataChange({ ...formState, [name]: value }); // Notificar al padre sobre el cambio
   };
+
+  // Exponer la función de guardado al componente padre
+  useImperativeHandle(ref, () => ({
+    save: async (currentAttentionId) => {
+      setError('');
+      setSuccess('');
+      try {
+        const method = currentAttentionId ? 'PUT' : 'POST';
+        const url = currentAttentionId
+          ? `/api/psychology/${currentAttentionId}`
+          : '/api/psychology';
+
+        const payload = {
+          ...formState,
+          attention_id: currentAttentionId,
+        };
+
+        const response = await fetch(url, {
+          method: method,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.msg || 'Error al guardar la evaluación de psicología.');
+        }
+        // NO ACTUALIZAR ESTADO AQUÍ. El componente está a punto de ser desmontado.
+        return { success: true };
+      } catch (err) {
+        console.error('Error al guardar evaluación de psicología:', err);
+        setError(err.message || 'Error de red al guardar evaluación de psicología.');
+        return { success: false, error: err.message };
+      }
+    },
+  }));
 
   if (loading) {
     return (
@@ -154,6 +193,8 @@ function PsychologyEvaluationForm({ attentionId, onSaveSuccess, onDataChange }) 
       />
     </Box>
   );
-}
+});
 
-export default forwardRef(PsychologyEvaluationForm);
+export default PsychologyEvaluationForm;
+
+

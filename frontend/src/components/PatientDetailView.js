@@ -30,25 +30,25 @@ function PatientDetailView({ patient, onNewAttention, onEditAttentions, onShowHi
         </Typography>
         <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <Typography variant="body1"><strong>Cédula:</strong> {patient.cedula}</Typography>
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <Typography variant="body1"><strong>Nombre:</strong> {patient.nombre} {patient.apellido}</Typography>
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <Typography variant="body1"><strong>Fecha Nacimiento:</strong> {patient.fecha_nacimiento ? new Date(patient.fecha_nacimiento).toLocaleDateString() : 'N/A'}</Typography>
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <Typography variant="body1"><strong>Género:</strong> {patient.genero || 'N/A'}</Typography>
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <Typography variant="body1"><strong>Teléfono:</strong> {patient.telefono || 'N/A'}</Typography>
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <Typography variant="body1"><strong>Email:</strong> {patient.email || 'N/A'}</Typography>
             </Grid>
-            <Grid item xs={12}>
+            <Grid xs={12}>
               <Typography variant="body1"><strong>Dirección:</strong> {patient.direccion || 'N/A'}</Typography>
             </Grid>
           </Grid>

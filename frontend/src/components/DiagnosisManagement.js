@@ -308,12 +308,8 @@ function DiagnosisManagement({ attentionId, readOnly, onDiagnosesChange }, ref) 
         throw new Error(data.msg || 'Error al guardar los diagnósticos en lote.');
       }
       
-      // Opcional: recargar los diagnósticos desde el servidor para obtener los IDs correctos
-      const updatedDiagnoses = await fetch(`/api/diagnostics?atencion_id=${attentionId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then(res => res.json());
-      setDiagnoses(updatedDiagnoses);
-      onDiagnosesChange && onDiagnosesChange(updatedDiagnoses);
+      // NO ACTUALIZAR ESTADO AQUÍ. El componente está a punto de ser desmontado.
+      // La responsabilidad de recargar datos recae en la vista a la que se redirige.
     }
   }));
 

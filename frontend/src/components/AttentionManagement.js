@@ -1,30 +1,47 @@
 import React, { useState } from 'react';
 import {
   Container,
-  Typography,
   Box,
   Button,
+  Alert,
+  Snackbar, // Importar Snackbar
 } from '@mui/material';
 import PatientSearchAndSelection from './PatientSearchAndSelection';
 import PatientDetailView from './PatientDetailView';
 import NewAttentionForm from './NewAttentionForm';
 import PatientAttentionList from './PatientAttentionList';
 import PatientAttentionHistory from './PatientAttentionHistory';
+import AttentionDetail from './AttentionDetail';
 
 function AttentionManagement() {
   const [selectedPatient, setSelectedPatient] = useState(null);
-  const [viewMode, setViewMode] = useState('search'); // 'search', 'details', 'newAttention', 'editAttentions', 'history'
+  const [viewMode, setViewMode] = useState('search');
+  const [selectedAttention, setSelectedAttention] = useState(null);
+  const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
 
   const handlePatientSelect = (patient) => {
     setSelectedPatient(patient);
     setViewMode('details');
   };
 
+  const handleBackToSearch = () => {
+    setSelectedPatient(null);
+    setSelectedAttention(null);
+    setViewMode('search');
+  };
+
   const handleBackToDetails = () => {
+    setSelectedAttention(null);
     setViewMode('details');
   };
 
   const handleNewAttention = () => {
+    setSelectedAttention(null);
+    setViewMode('newAttention');
+  };
+
+  const handleEditAttention = (attention) => {
+    setSelectedAttention(attention);
     setViewMode('newAttention');
   };
 
@@ -37,9 +54,28 @@ function AttentionManagement() {
   };
 
   const handleAttentionSaveSuccess = () => {
-    // Después de guardar una atención, podemos volver a la vista de detalles del paciente
-    setViewMode('details');
-    // Opcional: recargar los detalles del paciente si es necesario
+    // Usar setTimeout para asegurar que cualquier estado pendiente en el hijo se resuelva
+    // antes de desmontar el componente. Esto previene el error "removeChild".
+    setTimeout(() => {
+      setViewMode('details');
+      setNotification({ open: true, message: 'Atención guardada exitosamente.', severity: 'success' });
+    }, 0);
+  };
+
+  const handleShowAttentionDetails = (attention) => {
+    setSelectedAttention(attention);
+    setViewMode('attentionDetail');
+  };
+
+  const handleBackToHistory = () => {
+    setViewMode('history');
+  };
+
+  const handleCloseNotification = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setNotification({ ...notification, open: false });
   };
 
   const renderContent = () => {
@@ -47,52 +83,51 @@ function AttentionManagement() {
       case 'search':
         return <PatientSearchAndSelection onPatientSelect={handlePatientSelect} />;
       case 'details':
-        return selectedPatient ? (
-          <PatientDetailView
-            patient={selectedPatient}
-            onNewAttention={handleNewAttention}
-            onEditAttentions={handleEditAttentions}
-            onShowHistory={handleShowHistory}
-          />
-        ) : (
-          <Typography variant="h6" align="center" sx={{ mt: 4 }}>
-            No hay paciente seleccionado. Por favor, busque uno.
-          </Typography>
+        return (
+          <Box>
+            <Button variant="contained" onClick={handleBackToSearch} sx={{ mb: 2 }}>
+              Volver a la búsqueda
+            </Button>
+            <PatientDetailView
+              patient={selectedPatient}
+              onNewAttention={handleNewAttention}
+              onEditAttentions={handleEditAttentions}
+              onShowHistory={handleShowHistory}
+            />
+          </Box>
         );
       case 'newAttention':
-        return selectedPatient ? (
+        return (
           <NewAttentionForm
             patient={selectedPatient}
+            attention={selectedAttention}
             onSaveSuccess={handleAttentionSaveSuccess}
             onCancel={handleBackToDetails}
           />
-        ) : (
-          <Typography variant="h6" align="center" sx={{ mt: 4 }}>
-            No hay paciente seleccionado para registrar una nueva atención.
-          </Typography>
         );
       case 'editAttentions':
-        return selectedPatient ? (
+        return (
           <PatientAttentionList
-            patient={selectedPatient} // Pasar el objeto completo
-            patientId={selectedPatient.id}
+            patient={selectedPatient}
+            onEditAttention={handleEditAttention}
             onBack={handleBackToDetails}
           />
-        ) : (
-          <Typography variant="h6" align="center" sx={{ mt: 4 }}>
-            No hay paciente seleccionado para editar atenciones.
-          </Typography>
         );
       case 'history':
-        return selectedPatient ? (
+        return (
           <PatientAttentionHistory
+            patient={selectedPatient}
             patientId={selectedPatient.id}
+            onShowAttentionDetails={handleShowAttentionDetails}
             onBack={handleBackToDetails}
           />
-        ) : (
-          <Typography variant="h6" align="center" sx={{ mt: 4 }}>
-            No hay paciente seleccionado para ver el historial.
-          </Typography>
+        );
+      case 'attentionDetail':
+        return (
+          <AttentionDetail
+            attention={selectedAttention}
+            onBack={handleBackToHistory}
+          />
         );
       default:
         return <PatientSearchAndSelection onPatientSelect={handlePatientSelect} />;
@@ -101,6 +136,16 @@ function AttentionManagement() {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseNotification} severity={notification.severity} sx={{ width: '100%' }}>
+          {notification.message}
+        </Alert>
+      </Snackbar>
       {renderContent()}
     </Container>
   );

@@ -21,7 +21,7 @@ import OdontogramForm from './OdontogramForm';
 import PsychologyEvaluationForm from './PsychologyEvaluationForm';
 import { useAuth } from '../AuthContext';
 
-function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess, onCancel }) { // Añadimos existingAttention
+function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess, onSaveError, onCancel }) { // Añadimos onSaveError
   const { token, user } = useAuth();
   const [attentionFormState, setAttentionFormState] = useState({
     motivo_consulta: '',
@@ -40,16 +40,17 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
   const psychologyEvaluationFormRef = useRef();
   const diagnosisManagementRef = useRef();
 
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [currentAttentionId, setCurrentAttentionId] = useState(existingAttention?.id || null); // Usar ID existente o null
+  const [error, setError] = useState(''); // El error se mantiene local para mostrarlo junto a los campos
+  const [currentAttentionId, setCurrentAttentionId] = useState(existingAttention?.id || null);
   const [isSaving, setIsSaving] = useState(false);
-  const [loadingInitialData, setLoadingInitialData] = useState(false); // Nuevo estado para carga inicial
+  const [loadingInitialData, setLoadingInitialData] = useState(false);
 
   // Cargar datos existentes si estamos en modo edición
   useEffect(() => {
+    console.log('[NewAttentionForm] useEffect: El componente se ha montado o actualizado.');
     const loadExistingData = async () => {
       if (existingAttention) {
+        console.log('[NewAttentionForm] useEffect: Cargando datos para atención existente ID:', existingAttention.id);
         setLoadingInitialData(true);
         setAttentionFormState({
           motivo_consulta: existingAttention.motivo_consulta || '',
@@ -57,9 +58,14 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
         });
         setCurrentAttentionId(existingAttention.id);
         setLoadingInitialData(false);
+        console.log('[NewAttentionForm] useEffect: Datos cargados.');
       }
     };
     loadExistingData();
+
+    return () => {
+      console.log('[NewAttentionForm] cleanup: El componente está a punto de desmontarse.');
+    };
   }, [existingAttention]);
 
   const handleAttentionFormChange = (e) => {
@@ -88,8 +94,8 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
 
   const handleSaveAll = async (e) => {
     e.preventDefault();
+    console.log('[NewAttentionForm] handleSaveAll: Inicio del guardado.');
     setError('');
-    setSuccess('');
     setIsSaving(true);
 
     if (!patient || !patient.id) {
@@ -132,7 +138,7 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
       
       if (!attentionIdToUse) {
         attentionIdToUse = attentionData.attention.id;
-        setCurrentAttentionId(attentionIdToUse);
+        // No actualizamos el estado aquí para evitar un re-renderizado a mitad del proceso de guardado
       }
 
       // 2. Guardar todos los sub-formularios en paralelo
@@ -167,16 +173,17 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
         throw new Error(`Ocurrieron errores al guardar: ${errors}`);
       }
 
-      setSuccess('Historia clínica completa guardada exitosamente.');
-
-      setTimeout(() => {
-        onSaveSuccess();
-      }, 1500);
+      // Éxito. No se desactiva isSaving. Se navega inmediatamente.
+      // La actualización del estado del botón causaba la condición de carrera.
+      console.log('[NewAttentionForm] handleSaveAll: Guardado exitoso. Llamando a onSaveSuccess.');
+      onSaveSuccess();
 
     } catch (err) {
       console.error('Error en handleSaveAll:', err);
-      setError(err.message || 'No se pudo conectar con el servidor.');
-    } finally {
+      const errorMessage = err.message || 'No se pudo conectar con el servidor.';
+      setError(errorMessage);
+      onSaveError(errorMessage);
+      // Si hay un error, SÍ se desactiva isSaving para que el usuario pueda intentarlo de nuevo.
       setIsSaving(false);
     }
   };
@@ -199,11 +206,10 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
           {existingAttention ? 'Editar Atención' : 'Registrar Nueva Atención'} para {patient.nombre} {patient.apellido}
         </Typography>
         <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-          {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+          {error && <Alert severity="error" sx={{ mb: 2 }} TransitionComponent={null}>{error}</Alert>}
 
           <form onSubmit={handleSaveAll}>
-            <Accordion defaultExpanded>
+            <Accordion defaultExpanded TransitionProps={{ timeout: 0 }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6" color="primary">Información General de la Atención</Typography>
               </AccordionSummary>
@@ -238,7 +244,7 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
               </AccordionDetails>
             </Accordion>
 
-            <Accordion sx={{ mt: 2 }} defaultExpanded>
+            <Accordion sx={{ mt: 2 }} defaultExpanded TransitionProps={{ timeout: 0 }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6" color="primary">Antecedentes Médicos</Typography>
               </AccordionSummary>
@@ -251,7 +257,7 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
               </AccordionDetails>
             </Accordion>
 
-            <Accordion sx={{ mt: 2 }} defaultExpanded>
+            <Accordion sx={{ mt: 2 }} defaultExpanded TransitionProps={{ timeout: 0 }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6" color="primary">Detalles de Historia Clínica</Typography>
               </AccordionSummary>
@@ -265,7 +271,7 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
             </Accordion>
 
             {user && user.especialidades && user.especialidades.includes('Odontologia') && (
-              <Accordion sx={{ mt: 2 }} defaultExpanded>
+              <Accordion sx={{ mt: 2 }} defaultExpanded TransitionProps={{ timeout: 0 }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography variant="h6" color="primary">Odontograma</Typography>
                 </AccordionSummary>
@@ -279,7 +285,7 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
             )}
 
             {user && user.especialidades && user.especialidades.includes('Psicologia') && (
-              <Accordion sx={{ mt: 2 }} defaultExpanded>
+              <Accordion sx={{ mt: 2 }} defaultExpanded TransitionProps={{ timeout: 0 }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography variant="h6" color="primary">Evaluación de Psicología</Typography>
                 </AccordionSummary>
@@ -292,7 +298,7 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
               </Accordion>
             )}
 
-            <Accordion sx={{ mt: 2 }} defaultExpanded>
+            <Accordion sx={{ mt: 2 }} defaultExpanded TransitionProps={{ timeout: 0 }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6" color="primary">Diagnósticos</Typography>
               </AccordionSummary>
@@ -309,8 +315,22 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
               <Button variant="outlined" onClick={onCancel} disabled={isSaving}>
                 Cancelar
               </Button>
-              <Button type="submit" variant="contained" color="primary" disabled={isSaving}>
-                {isSaving ? <CircularProgress size={24} /> : 'Guardar Historia Clínica'}
+              <Button type="submit" variant="contained" color="primary" disabled={isSaving} sx={{ position: 'relative' }}>
+                <span style={{ visibility: isSaving ? 'hidden' : 'visible' }}>
+                  Guardar Historia Clínica
+                </span>
+                {isSaving && (
+                  <CircularProgress
+                    size={24}
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      marginTop: '-12px',
+                      marginLeft: '-12px',
+                    }}
+                  />
+                )}
               </Button>
             </Box>
           </form>
