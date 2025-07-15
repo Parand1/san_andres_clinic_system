@@ -18,7 +18,7 @@ import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import { AuthProvider, useAuth } from './AuthContext';
 import theme from './theme'; // Importamos el tema personalizado
-import logo from './assets/san_andres_logo_completo.png'; // Importamos el logo
+import appBarLogo from './assets/san_andres_logo_solo.png'; // Importamos el nuevo logo para la AppBar
 
 // Componente para la AppBar con lógica de autenticación
 function AppBarContent() {
@@ -27,10 +27,12 @@ function AppBarContent() {
   return (
     <AppBar position="fixed" elevation={1}>
       <Toolbar>
-        <Box component="img" sx={{ height: 40, mr: 2 }} src={logo} alt="Logo Centro Médico San Andrés" />
-        <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-          Centro Médico San Andrés
-        </Typography>
+        <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: isAuthenticated ? 'flex-start' : 'center', alignItems: 'center' }}>
+            <Box component="img" sx={{ height: 40, mr: 2 }} src={appBarLogo} alt="Logo Centro Médico San Andrés" />
+            <Typography variant="h6" noWrap component="div">
+              Centro Médico San Andrés
+            </Typography>
+        </Box>
         {isAuthenticated ? (
           <>
             {user && user.rol === 'admin' && (
@@ -53,9 +55,7 @@ function AppBarContent() {
           </>
         ) : (
           <>
-            <Button color="secondary" variant="contained" component={Link} to="/login">
-              Login
-            </Button>
+            {/* El botón de Login se ha eliminado de aquí */}
           </>
         )}
       </Toolbar>
