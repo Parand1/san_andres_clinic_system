@@ -28,6 +28,9 @@ app.use('/api/antecedents', require('./routes/antecedentsRoutes'));
 app.use('/api/odontogram', require('./routes/odontogramRoutes'));
 app.use('/api/psychology-evaluation', require('./routes/psychologyRoutes'));
 app.use('/api/diagnostics', require('./routes/diagnosisRoutes'));
+app.use('/api/citas', require('./routes/citasRoutes'));
+app.use('/api/pagos', require('./routes/pagosRoutes'));
+app.use('/api/contabilidad', require('./routes/contabilidadRoutes'));
 
 // Servir archivos estáticos del frontend (después de las rutas de la API)
 app.use(express.static(path.join(__dirname, '../frontend/build')));

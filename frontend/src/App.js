@@ -14,8 +14,10 @@ import Dashboard from './components/Dashboard';
 import ProfessionalManagement from './components/ProfessionalManagement';
 import PatientManagement from './components/PatientManagement';
 import AttentionManagement from './components/AttentionManagement';
+import AppointmentCalendar from './components/AppointmentCalendar'; // <-- NUEVO
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
+import SecretaryRoute from './components/SecretaryRoute'; // <-- NUEVO
 import { AuthProvider, useAuth } from './AuthContext';
 import theme from './theme'; // Importamos el tema personalizado
 import appBarLogo from './assets/san_andres_logo_solo.png'; // Importamos el nuevo logo para la AppBar
@@ -35,6 +37,11 @@ function AppBarContent() {
         </Box>
         {isAuthenticated ? (
           <>
+            {user && (user.rol === 'admin' || user.rol === 'secretaria') && (
+              <Button color="inherit" component={Link} to="/appointments">
+                Agendamiento
+              </Button>
+            )}
             {user && user.rol === 'admin' && (
               <Button color="inherit" component={Link} to="/admin/professionals">
                 Gestión de Profesionales
@@ -89,6 +96,14 @@ function App() {
                     <PrivateRoute>
                       <AttentionManagement />
                     </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/appointments"
+                  element={
+                    <SecretaryRoute>
+                      <AppointmentCalendar />
+                    </SecretaryRoute>
                   }
                 />
                 
