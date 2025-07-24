@@ -15,6 +15,8 @@ import ProfessionalManagement from './components/ProfessionalManagement';
 import PatientManagement from './components/PatientManagement';
 import AttentionManagement from './components/AttentionManagement';
 import AppointmentCalendar from './components/AppointmentCalendar'; // <-- NUEVO
+import CashBoxView from './components/CashBoxView'; // <-- NUEVO
+import ReportsView from './components/ReportsView'; // <-- NUEVO
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import SecretaryRoute from './components/SecretaryRoute'; // <-- NUEVO
@@ -38,14 +40,24 @@ function AppBarContent() {
         {isAuthenticated ? (
           <>
             {user && (user.rol === 'admin' || user.rol === 'secretaria') && (
-              <Button color="inherit" component={Link} to="/appointments">
-                Agendamiento
-              </Button>
+              <>
+                <Button color="inherit" component={Link} to="/appointments">
+                  Agendamiento
+                </Button>
+                <Button color="inherit" component={Link} to="/cashbox">
+                  Gestión de Caja
+                </Button>
+              </>
             )}
             {user && user.rol === 'admin' && (
-              <Button color="inherit" component={Link} to="/admin/professionals">
-                Gestión de Profesionales
-              </Button>
+              <>
+                <Button color="inherit" component={Link} to="/admin/professionals">
+                  Gestión de Profesionales
+                </Button>
+                <Button color="inherit" component={Link} to="/reports">
+                  Reportes
+                </Button>
+              </>
             )}
             <Button color="inherit" component={Link} to="/patients">
               Gestión de Pacientes
@@ -106,6 +118,14 @@ function App() {
                     </SecretaryRoute>
                   }
                 />
+                <Route
+                  path="/cashbox"
+                  element={
+                    <SecretaryRoute>
+                      <CashBoxView />
+                    </SecretaryRoute>
+                  }
+                />
                 
                 {/* Ruta protegida */}
                 <Route
@@ -122,6 +142,14 @@ function App() {
                   element={
                     <AdminRoute>
                       <ProfessionalManagement />
+                    </AdminRoute>
+                  }
+                />
+                <Route
+                  path="/reports"
+                  element={
+                    <AdminRoute>
+                      <ReportsView />
                     </AdminRoute>
                   }
                 />

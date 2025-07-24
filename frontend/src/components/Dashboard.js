@@ -18,7 +18,9 @@ import {
   Alert
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom'; // <-- AÑADIDO
-import PaymentDialog from './PaymentDialog';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import { useAuth } from '../AuthContext';
+import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
 
 const motivationalQuotes = [
   "La buena medicina es la que actúa menos sobre los síntomas que sobre sus causas.",
@@ -168,7 +170,18 @@ function DailyAppointmentsTable() {
                 <TableCell>{apt.title}</TableCell>
                 <TableCell>{`${apt.profesional_nombre} ${apt.profesional_apellido}`}</TableCell>
                 <TableCell>{apt.tipo_atencion}</TableCell>
-                <TableCell><Chip label={apt.estado_cita} size="small" color={apt.estado_cita === 'Pagada' ? 'success' : 'default'} /></TableCell>
+                <TableCell>
+                  <Chip label={apt.estado_cita} size="small" color={apt.estado_cita === 'Pagada' ? 'success' : 'default'} />
+                  {apt.procedimientos_adicionales_facturables && apt.estado_cita === 'Atendiendo' && (
+                    <Chip 
+                      icon={<MonetizationOnIcon />}
+                      label="Cobro Adicional"
+                      size="small"
+                      color="warning"
+                      sx={{ ml: 1 }}
+                    />
+                  )}
+                </TableCell>
                 <TableCell>
                   {user.rol === 'secretaria' && apt.estado_cita === 'Confirmada' && (
                       <Button size="small" variant="contained" color="success" onClick={() => handleOpenPaymentDialog(apt)}>Registrar Pago</Button>

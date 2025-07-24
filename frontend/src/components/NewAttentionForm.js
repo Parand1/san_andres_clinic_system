@@ -26,6 +26,7 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
   const [attentionFormState, setAttentionFormState] = useState({
     motivo_consulta: '',
     notas_generales: '',
+    procedimientos_adicionales_facturables: '',
   });
   const [medicalHistoryDetails, setMedicalHistoryDetails] = useState({});
   const [antecedents, setAntecedents] = useState({});
@@ -55,6 +56,7 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
         setAttentionFormState({
           motivo_consulta: existingAttention.motivo_consulta || '',
           notas_generales: existingAttention.notas_generales || '',
+          procedimientos_adicionales_facturables: existingAttention.procedimientos_adicionales_facturables || '',
         });
         setCurrentAttentionId(existingAttention.id);
         setLoadingInitialData(false);
@@ -111,6 +113,7 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
       const attentionPayload = {
         motivo_consulta: attentionFormState.motivo_consulta,
         notas_generales: attentionFormState.notas_generales,
+        procedimientos_adicionales_facturables: attentionFormState.procedimientos_adicionales_facturables,
       };
 
       if (!attentionIdToUse) {
@@ -238,6 +241,19 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
                   rows={4}
                   variant="outlined"
                   value={attentionFormState.notas_generales}
+                  onChange={handleAttentionFormChange}
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  margin="dense"
+                  name="procedimientos_adicionales_facturables"
+                  label="Procedimientos Adicionales Facturables"
+                  type="text"
+                  fullWidth
+                  multiline
+                  rows={3}
+                  variant="outlined"
+                  value={attentionFormState.procedimientos_adicionales_facturables}
                   onChange={handleAttentionFormChange}
                   sx={{ mb: 2 }}
                 />

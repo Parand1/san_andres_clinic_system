@@ -419,6 +419,7 @@ function ProfessionalManagement() {
                 onChange={handleChange}
               >
                 <MenuItem value="profesional">Profesional</MenuItem>
+                <MenuItem value="secretaria">Secretaria</MenuItem>
                 <MenuItem value="admin">Administrador</MenuItem>
               </Select>
             </FormControl>
