@@ -54,9 +54,6 @@ function AppBarContent() {
                 <Button color="inherit" component={Link} to="/admin/professionals">
                   Gestión de Profesionales
                 </Button>
-                <Button color="inherit" component={Link} to="/reports">
-                  Reportes
-                </Button>
               </>
             )}
             <Button color="inherit" component={Link} to="/patients">

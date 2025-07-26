@@ -12,6 +12,7 @@ import {
   Grid
 } from '@mui/material';
 import { useAuth } from '../AuthContext';
+import { Link } from 'react-router-dom'; // Importar Link
 
 function CashBoxView() {
   const { token } = useAuth();
@@ -56,7 +57,7 @@ function CashBoxView() {
   };
 
   const handleCloseBox = async () => {
-    if (await handleApiCall('/api/contabilidad/caja/cierre', { monto_final_efectivo: parseFloat(closingAmount), notas }, 'Caja cerrada exitosamente.')) {
+    if (await handleApiCall('/api/contabilidad/caja/cierre', { monto_final_efectivo: parseFloat(closingAmount), notas: notes }, 'Caja cerrada exitosamente.')) {
         setClosingAmount('');
         setNotes('');
     }
@@ -64,9 +65,14 @@ function CashBoxView() {
 
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Gestión de Caja Diaria
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h4" component="h1">
+          Gestión de Caja Diaria
+        </Typography>
+        <Button variant="contained" color="info" component={Link} to="/reports">
+          Ver Reportes
+        </Button>
+      </Box>
       
       {loading && <CircularProgress sx={{ mb: 2 }} />}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -79,7 +85,7 @@ function CashBoxView() {
             <Typography variant="h5" gutterBottom>
               Apertura de Caja
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{mb: 2}}>
+            <Typography variant="body2" color="text.secondary" sx={{mb: 2}} >
               Registra el monto inicial para empezar las operaciones del día.
             </Typography>
             <TextField
@@ -106,7 +112,7 @@ function CashBoxView() {
             <Typography variant="h5" gutterBottom>
               Cierre de Caja
             </Typography>
-             <Typography variant="body2" color="text.secondary" sx={{mb: 2}}>
+             <Typography variant="body2" color="text.secondary" sx={{mb: 2}} >
               Registra el monto final contado en efectivo y añade notas relevantes.
             </Typography>
             <TextField
