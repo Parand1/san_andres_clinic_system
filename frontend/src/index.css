@@ -11,3 +11,11 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Estilos personalizados para FullCalendar */
+.fc-timegrid-event-harness {
+  width: 100% !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin-bottom: 2px; /* Opcional: para añadir un pequeño espacio entre eventos apilados */
+}

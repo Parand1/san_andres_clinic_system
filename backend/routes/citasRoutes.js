@@ -25,6 +25,8 @@ router.get('/', authenticateToken, async (req, res) => {
     let query = `
       SELECT 
         c.id, 
+        c.paciente_id,
+        c.notas_secretaria,
         c.fecha_hora_inicio AS "start", 
         c.fecha_hora_fin AS "end",
         p.nombre || ' ' || p.apellido AS title,
@@ -58,7 +60,7 @@ router.get('/', authenticateToken, async (req, res) => {
     res.json(allCitas.rows);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Error del servidor');
+    res.status(500).json({ msg: 'Error del servidor' });
   }
 });
 
@@ -117,7 +119,7 @@ router.post('/', authenticateToken, authorizeRoles('admin', 'profesional', 'secr
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err.message);
-    res.status(500).send('Error del servidor');
+    res.status(500).json({ msg: 'Error del servidor' });
   } finally {
     client.release();
   }
@@ -150,7 +152,7 @@ router.put('/:id', authenticateToken, authorizeRoles('admin', 'profesional', 'se
     res.json(updatedCita.rows[0]);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Error del servidor');
+    res.status(500).json({ msg: 'Error del servidor' });
   }
 });
 
@@ -181,7 +183,48 @@ router.patch('/:id/estado', authenticateToken, authorizeRoles('admin', 'profesio
     res.json(updatedCita.rows[0]);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Error del servidor');
+    res.status(500).json({ msg: 'Error del servidor' });
+  }
+});
+
+// RUTA: DELETE /api/citas/:id - Eliminar una cita
+router.delete('/:id', authenticateToken, authorizeRoles('admin', 'secretaria'), async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Obtener el pago asociado a la cita
+    const pagoResult = await client.query('SELECT id FROM pagos WHERE cita_id = $1', [id]);
+    if (pagoResult.rows.length > 0) {
+      const pagoId = pagoResult.rows[0].id;
+      // 2. Eliminar los items de pago
+      await client.query('DELETE FROM pagos_items WHERE pago_id = $1', [pagoId]);
+      // 3. Eliminar el pago
+      await client.query('DELETE FROM pagos WHERE id = $1', [pagoId]);
+    }
+
+    // 4. Eliminar la cita
+    const deletedCita = await client.query('DELETE FROM citas WHERE id = $1 RETURNING id', [id]);
+
+    if (deletedCita.rows.length === 0) {
+      throw new Error('Cita no encontrada.');
+    }
+
+    // 5. Registrar en auditoría
+    await audit(userId, 'Eliminación de Cita', 'Cita', id);
+
+    await client.query('COMMIT');
+    res.json({ msg: 'Cita eliminada exitosamente.' });
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err.message);
+    res.status(500).json({ msg: err.message || 'Error del servidor' });
+  } finally {
+    client.release();
   }
 });
 

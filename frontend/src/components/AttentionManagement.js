@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Box,
   Button,
   Alert,
-  Snackbar, // Importar Snackbar
+  Snackbar,
 } from '@mui/material';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
 import PatientSearchAndSelection from './PatientSearchAndSelection';
 import PatientDetailView from './PatientDetailView';
 import NewAttentionForm from './NewAttentionForm';
@@ -14,10 +16,43 @@ import PatientAttentionHistory from './PatientAttentionHistory';
 import AttentionDetail from './AttentionDetail';
 
 function AttentionManagement() {
+  const { token } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [viewMode, setViewMode] = useState('search');
   const [selectedAttention, setSelectedAttention] = useState(null);
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
+
+  useEffect(() => {
+    const appointmentData = location.state?.appointmentData;
+
+    const fetchPatientAndGoToDetails = async (appointment) => {
+      if (appointment && appointment.paciente_id) {
+        try {
+          const response = await fetch(`/api/patients/${appointment.paciente_id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const patientData = await response.json();
+          if (response.ok) {
+            setSelectedPatient(patientData);
+            setViewMode('details'); // Cambiado a 'details'
+          } else {
+            console.error('Error fetching patient data:', patientData.msg);
+          }
+        } catch (err) {
+          console.error('Error fetching patient data:', err);
+        }
+      }
+    };
+
+    if (appointmentData) {
+      fetchPatientAndGoToDetails(appointmentData);
+      // Limpiar el estado de la ubicación para que no se reutilice
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.state, token, navigate]);
 
   const handlePatientSelect = (patient) => {
     setSelectedPatient(patient);
@@ -54,8 +89,6 @@ function AttentionManagement() {
   };
 
   const handleAttentionSaveSuccess = () => {
-    // Usar setTimeout para asegurar que cualquier estado pendiente en el hijo se resuelva
-    // antes de desmontar el componente. Esto previene el error "removeChild".
     setTimeout(() => {
       setViewMode('details');
       setNotification({ open: true, message: 'Atención guardada exitosamente.', severity: 'success' });

@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom'; // <-- AÑADIDO
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import { useAuth } from '../AuthContext';
 import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
+import PaymentDialog from './PaymentDialog';
 
 const motivationalQuotes = [
   "La buena medicina es la que actúa menos sobre los síntomas que sobre sus causas.",
@@ -30,7 +31,7 @@ const motivationalQuotes = [
 
 // Componente para la tabla de citas del día
 function DailyAppointmentsTable() {
-  const { token, user } = useAuth();
+  const { token, user, logout } = useAuth();
   const navigate = useNavigate(); // <-- AÑADIDO
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,6 +52,12 @@ function DailyAppointmentsTable() {
     try {
       setLoading(true);
       const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      
+      if (response.status === 403) {
+        logout();
+        return;
+      }
+
       const data = await response.json();
       if (response.ok) {
         setAppointments(data);
@@ -58,7 +65,7 @@ function DailyAppointmentsTable() {
         setError(data.msg || 'Error al cargar citas del día.');
       }
     } catch (err) {
-      setError('No se pudo conectar al servidor.');
+      setError('No se pudo conectar con el servidor.');
     } finally {
       setLoading(false);
     }
@@ -183,13 +190,13 @@ function DailyAppointmentsTable() {
                   )}
                 </TableCell>
                 <TableCell>
-                  {user.rol === 'secretaria' && apt.estado_cita === 'Confirmada' && (
+                  {(user.rol === 'secretaria' || user.rol === 'admin') && apt.estado_cita === 'Confirmada' && (
                       <Button size="small" variant="contained" color="success" onClick={() => handleOpenPaymentDialog(apt)}>Registrar Pago</Button>
                   )}
-                  {user.rol === 'secretaria' && apt.estado_cita === 'Programada' && (
+                  {(user.rol === 'secretaria' || user.rol === 'admin') && apt.estado_cita === 'Programada' && (
                       <Button size="small" onClick={() => handleUpdateState(apt.id, 'Confirmada')}>Confirmar</Button>
                   )}
-                  {user.rol === 'secretaria' && apt.estado_cita === 'Pagada' && (
+                  {(user.rol === 'secretaria' || user.rol === 'admin') && apt.estado_cita === 'Pagada' && (
                       <Button size="small" onClick={() => handleUpdateState(apt.id, 'En Sala de Espera')}>Check-In</Button>
                   )}
                   {user.rol === 'profesional' && apt.estado_cita === 'En Sala de Espera' && (

@@ -11,11 +11,12 @@ import {
   Select,
   MenuItem,
   Alert,
-  Autocomplete
+  Autocomplete,
+  Box
 } from '@mui/material';
 import { useAuth } from '../AuthContext';
 
-function AppointmentDialog({ open, onClose, onSave, appointmentData }) {
+function AppointmentDialog({ open, onClose, onSave, onDelete, appointmentData }) {
   const { token } = useAuth();
   const [formState, setFormState] = useState({});
   const [error, setError] = useState('');
@@ -24,6 +25,7 @@ function AppointmentDialog({ open, onClose, onSave, appointmentData }) {
   const [patients, setPatients] = useState([]);
   const [professionals, setProfessionals] = useState([]);
   const [patientSearchTerm, setPatientSearchTerm] = useState('');
+  const [selectedPatient, setSelectedPatient] = useState(null);
 
   // Cargar datos iniciales para los selectores
   useEffect(() => {
@@ -34,7 +36,16 @@ function AppointmentDialog({ open, onClose, onSave, appointmentData }) {
         const profsData = await profsResponse.json();
         if (profsResponse.ok) setProfessionals(profsData);
 
-        // Lógica de búsqueda de pacientes se activará con el input del usuario
+        // Si estamos editando, cargar los datos del paciente existente
+        if (appointmentData && appointmentData.paciente_id) {
+          const patientResponse = await fetch(`/api/patients/${appointmentData.paciente_id}`, { headers: { Authorization: `Bearer ${token}` } });
+          const patientData = await patientResponse.json();
+          if (patientResponse.ok) {
+            setPatients([patientData]);
+            setSelectedPatient(patientData);
+          }
+        }
+
       } catch (err) {
         setError('No se pudo cargar la información inicial.');
       }
@@ -42,7 +53,7 @@ function AppointmentDialog({ open, onClose, onSave, appointmentData }) {
     if (open) {
       fetchInitialData();
     }
-  }, [open, token]);
+  }, [open, token, appointmentData]);
 
   // Cargar pacientes según el término de búsqueda
   useEffect(() => {
@@ -63,16 +74,29 @@ function AppointmentDialog({ open, onClose, onSave, appointmentData }) {
   // Sincronizar estado del formulario con los datos de la cita a editar
   useEffect(() => {
     if (appointmentData) {
+      // Función para formatear la fecha en el formato que espera el input datetime-local
+      const formatDateTimeLocal = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        // Ajustar por la zona horaria local para evitar que UTC cambie el día
+        const timezoneOffset = date.getTimezoneOffset() * 60000;
+        const localDate = new Date(date.getTime() - timezoneOffset);
+        return localDate.toISOString().slice(0, 16);
+      };
+
       setFormState({
+        id: appointmentData.id,
         paciente_id: appointmentData.paciente_id || '',
         profesional_id: appointmentData.profesional_id || '',
-        fecha_hora_inicio: appointmentData.start ? new Date(appointmentData.start).toISOString().slice(0, 16) : '',
-        fecha_hora_fin: appointmentData.end ? new Date(appointmentData.end).toISOString().slice(0, 16) : '',
+        fecha_hora_inicio: formatDateTimeLocal(appointmentData.start),
+        fecha_hora_fin: formatDateTimeLocal(appointmentData.end),
         tipo_atencion: appointmentData.tipo_atencion || 'Primera Vez',
         notas_secretaria: appointmentData.notas_secretaria || ''
       });
     } else {
       setFormState({}); // Resetear para una nueva cita
+      setSelectedPatient(null);
+      setPatients([]);
     }
   }, [appointmentData]);
 
@@ -96,10 +120,12 @@ function AppointmentDialog({ open, onClose, onSave, appointmentData }) {
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         
         <Autocomplete
+          value={selectedPatient}
           options={patients}
           getOptionLabel={(option) => `${option.nombre} ${option.apellido} (${option.cedula})`}
           isOptionEqualToValue={(option, value) => option.id === value.id}
           onChange={(event, newValue) => {
+            setSelectedPatient(newValue);
             setFormState({ ...formState, paciente_id: newValue ? newValue.id : '' });
           }}
           onInputChange={(event, newInputValue) => {
@@ -161,9 +187,18 @@ function AppointmentDialog({ open, onClose, onSave, appointmentData }) {
         />
 
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancelar</Button>
-        <Button onClick={handleSaveClick} variant="contained">Guardar</Button>
+      <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
+        <Box>
+            {appointmentData && (
+                <Button onClick={() => onDelete(appointmentData.id)} color="error">
+                    Eliminar
+                </Button>
+            )}
+        </Box>
+        <Box>
+            <Button onClick={onClose}>Cancelar</Button>
+            <Button onClick={handleSaveClick} variant="contained">Guardar</Button>
+        </Box>
       </DialogActions>
     </Dialog>
   );

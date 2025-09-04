@@ -13,6 +13,7 @@ function AppointmentCalendar() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [dialogKey, setDialogKey] = useState(0);
@@ -26,16 +27,7 @@ function AppointmentCalendar() {
       });
       const data = await response.json();
       if (response.ok) {
-        const formattedEvents = data.map(cita => ({
-          id: cita.cita_id,
-          title: `${cita.paciente_nombre} ${cita.paciente_apellido}`,
-          start: cita.fecha_hora,
-          end: cita.fecha_hora_fin, // Asegurarse que el backend provee esto
-          extendedProps: {
-            ...cita
-          }
-        }));
-        setEvents(formattedEvents);
+        setEvents(data);
       } else {
         setError(data.msg || 'Error al cargar las citas.');
       }
@@ -53,7 +45,13 @@ function AppointmentCalendar() {
   }, [token, fetchAppointments]);
 
   const handleEventClick = (clickInfo) => {
-    setSelectedAppointment(clickInfo.event.extendedProps);
+    const appointment = {
+      id: clickInfo.event.id,
+      start: clickInfo.event.start,
+      end: clickInfo.event.end,
+      ...clickInfo.event.extendedProps
+    };
+    setSelectedAppointment(appointment);
     setDialogKey(prevKey => prevKey + 1);
     setDialogOpen(true);
   };
@@ -64,8 +62,8 @@ function AppointmentCalendar() {
   };
 
   const handleAppointmentSave = async (appointmentData) => {
-    const isNew = !appointmentData.cita_id;
-    const url = isNew ? '/api/citas' : `/api/citas/${appointmentData.cita_id}`;
+    const isNew = !appointmentData.id;
+    const url = isNew ? '/api/citas' : `/api/citas/${appointmentData.id}`;
     const method = isNew ? 'POST' : 'PUT';
 
     try {
@@ -93,6 +91,30 @@ function AppointmentCalendar() {
     }
   };
 
+  const handleAppointmentDelete = async (appointmentId) => {
+    if (!window.confirm('¿Está seguro de que desea eliminar esta cita?')) {
+      return;
+    }
+    try {
+      const response = await fetch(`/api/citas/${appointmentId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.msg || 'Error al eliminar la cita.');
+      }
+      setSuccess(data.msg || 'Cita eliminada exitosamente.');
+      handleDialogClose();
+      fetchAppointments(); // Recargar citas
+    } catch (err) {
+      console.error("Error eliminando la cita:", err);
+      setError(err.message);
+    }
+  };
+
   const handleNewAppointment = () => {
     setSelectedAppointment(null);
     setDialogKey(prevKey => prevKey + 1);
@@ -115,6 +137,7 @@ function AppointmentCalendar() {
         </Box>
       
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+      {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
 
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -129,8 +152,16 @@ function AppointmentCalendar() {
         locale={esLocale}
         editable={true}
         droppable={true}
-        slotMinTime="08:00:00"
+        slotMinTime="07:00:00"
         slotMaxTime="20:00:00"
+        slotDuration="00:20:00"
+        slotLabelInterval="00:20:00"
+        slotLabelFormat={{
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        }}
+        eventOverlap={false}
         allDaySlot={false}
       />
 
@@ -140,6 +171,7 @@ function AppointmentCalendar() {
           open={dialogOpen}
           onClose={handleDialogClose}
           onSave={handleAppointmentSave}
+          onDelete={handleAppointmentDelete}
           appointmentData={selectedAppointment}
         />
       )}
