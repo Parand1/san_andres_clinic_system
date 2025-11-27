@@ -34,7 +34,8 @@ router.get('/', authenticateToken, async (req, res) => {
         c.tipo_atencion,
         c.profesional_id,
         prof.nombre as profesional_nombre,
-        prof.apellido as profesional_apellido
+        prof.apellido as profesional_apellido,
+        (SELECT COUNT(*) > 0 FROM pagos pg WHERE pg.cita_id = c.id AND pg.estado_pago = 'Pendiente') as tiene_pagos_pendientes
       FROM citas c
       JOIN pacientes p ON c.paciente_id = p.id
       JOIN profesionales prof ON c.profesional_id = prof.id
@@ -55,6 +56,8 @@ router.get('/', authenticateToken, async (req, res) => {
       query += ` AND c.profesional_id = $${paramIndex++}`;
       values.push(profesional_id);
     }
+
+    query += ` ORDER BY c.fecha_hora_inicio ASC`;
 
     const allCitas = await pool.query(query, values);
     res.json(allCitas.rows);
@@ -93,24 +96,7 @@ router.post('/', authenticateToken, authorizeRoles('admin', 'profesional', 'secr
     );
     const citaCreada = newCita.rows[0];
 
-    // 2. Crear el pago pendiente asociado
-    // (Asumimos un precio base por consulta, esto podría venir de otra tabla en el futuro)
-    const precioConsulta = 40.00; // Precio quemado por ahora
-    const newPago = await client.query(
-      `INSERT INTO pagos (cita_id, paciente_id, monto_total, metodo_pago, estado_pago, registrado_por_user_id)
-       VALUES ($1, $2, $3, 'Efectivo', 'Pendiente', $4) RETURNING id`,
-       [citaCreada.id, paciente_id, precioConsulta, userId]
-    );
-    const pagoId = newPago.rows[0].id;
-
-    // 3. Crear el item de pago
-    await client.query(
-      `INSERT INTO pagos_items (pago_id, descripcion, cantidad, precio_unitario, monto_item)
-       VALUES ($1, $2, 1, $3, $3)`,
-       [pagoId, `Consulta ${tipo_atencion}`, precioConsulta]
-    );
-
-    // 4. Registrar en auditoría
+    // 2. Registrar en auditoría
     await audit(userId, 'Creación de Cita', 'Cita', citaCreada.id, { paciente_id, profesional_id, fecha: fecha_hora_inicio });
 
     await client.query('COMMIT');
@@ -183,7 +169,7 @@ router.patch('/:id/estado', authenticateToken, authorizeRoles('admin', 'profesio
     res.json(updatedCita.rows[0]);
   } catch (err) {
     console.error(err.message);
-    res.status(500).json({ msg: 'Error del servidor' });
+    res.status(500).json({ msg: err.message || 'Error del servidor' });
   }
 });
 

@@ -23,6 +23,7 @@ function AttentionManagement() {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [viewMode, setViewMode] = useState('search');
   const [selectedAttention, setSelectedAttention] = useState(null);
+  const [currentAppointmentId, setCurrentAppointmentId] = useState(null); // Nuevo estado para guardar el ID de la cita
   const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
@@ -31,13 +32,35 @@ function AttentionManagement() {
     const fetchPatientAndGoToDetails = async (appointment) => {
       if (appointment && appointment.paciente_id) {
         try {
+          // 1. Cargar datos del paciente
           const response = await fetch(`/api/patients/${appointment.paciente_id}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           const patientData = await response.json();
+          
           if (response.ok) {
             setSelectedPatient(patientData);
-            setViewMode('details'); // Cambiado a 'details'
+            setCurrentAppointmentId(appointment.id); // Guardamos el ID de la cita
+            
+            // 2. Actualizar estado de la cita a 'Atendiendo'
+            // Solo si el estado actual no es 'Finalizada' o 'Pagada' (para evitar revertir estados si se recarga)
+            if (appointment.estado_cita === 'En Sala de Espera') {
+                await fetch(`/api/citas/${appointment.id}/estado`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ nuevo_estado: 'Atendiendo' }),
+                });
+            }
+
+            // Decidir a qué vista ir basado en el targetView o por defecto a details
+            if (location.state?.targetView === 'history') {
+                setViewMode('history');
+            } else {
+                setViewMode('details');
+            }
           } else {
             console.error('Error fetching patient data:', patientData.msg);
           }
@@ -56,12 +79,14 @@ function AttentionManagement() {
 
   const handlePatientSelect = (patient) => {
     setSelectedPatient(patient);
+    setCurrentAppointmentId(null); // Limpiamos el ID de cita si seleccionamos manualmente
     setViewMode('details');
   };
 
   const handleBackToSearch = () => {
     setSelectedPatient(null);
     setSelectedAttention(null);
+    setCurrentAppointmentId(null);
     setViewMode('search');
   };
 
@@ -92,6 +117,9 @@ function AttentionManagement() {
     setTimeout(() => {
       setViewMode('details');
       setNotification({ open: true, message: 'Atención guardada exitosamente.', severity: 'success' });
+      // Opcional: Limpiar el appointment ID después de guardar exitosamente, 
+      // si queremos que futuras atenciones para este paciente en esta sesión no se liguen a la misma cita.
+      setCurrentAppointmentId(null); 
     }, 0);
   };
 
@@ -136,6 +164,7 @@ function AttentionManagement() {
             attention={selectedAttention}
             onSaveSuccess={handleAttentionSaveSuccess}
             onCancel={handleBackToDetails}
+            citaId={currentAppointmentId} // Pasamos el ID de la cita
           />
         );
       case 'editAttentions':

@@ -21,7 +21,7 @@ import OdontogramForm from './OdontogramForm';
 import PsychologyEvaluationForm from './PsychologyEvaluationForm';
 import { useAuth } from '../AuthContext';
 
-function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess, onSaveError, onCancel }) { // Añadimos onSaveError
+function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess, onSaveError, onCancel, citaId }) { // Añadimos citaId a las props
   const { token, user } = useAuth();
   const [attentionFormState, setAttentionFormState] = useState({
     motivo_consulta: '',
@@ -175,6 +175,9 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
       if (errors) {
         throw new Error(`Ocurrieron errores al guardar: ${errors}`);
       }
+
+      // 3. (ELIMINADO) Ya no actualizamos el estado a 'Finalizada' automáticamente.
+      // El usuario lo hará manualmente desde el Dashboard.
 
       // Éxito. No se desactiva isSaving. Se navega inmediatamente.
       // La actualización del estado del botón causaba la condición de carrera.

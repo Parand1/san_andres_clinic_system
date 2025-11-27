@@ -31,6 +31,7 @@ app.use('/api/diagnostics', require('./routes/diagnosisRoutes'));
 app.use('/api/citas', require('./routes/citasRoutes'));
 app.use('/api/pagos', require('./routes/pagosRoutes'));
 app.use('/api/contabilidad', require('./routes/contabilidadRoutes'));
+app.use('/api/tarifario', require('./routes/tarifarioRoutes'));
 
 // Servir archivos estáticos del frontend (después de las rutas de la API)
 app.use(express.static(path.join(__dirname, '../frontend/build')));

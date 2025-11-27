@@ -4,8 +4,8 @@ const pool = require('../config/db');
 const bcrypt = require('bcrypt');
 const { authenticateToken, authorizeRoles } = require('../middleware/authMiddleware');
 
-// Ruta para obtener todos los profesionales (solo accesible por admin)
-router.get('/', authenticateToken, authorizeRoles('admin'), async (req, res) => {
+// Ruta para obtener todos los profesionales (accesible por admin, secretaria y profesional)
+router.get('/', authenticateToken, authorizeRoles('admin', 'secretaria', 'profesional'), async (req, res) => {
   console.log('[/api/professionals] Solicitud recibida.');
   try {
     const allProfessionals = await pool.query(`
@@ -25,8 +25,8 @@ router.get('/', authenticateToken, authorizeRoles('admin'), async (req, res) => 
   }
 });
 
-// Ruta para obtener un profesional por ID (solo accesible por admin)
-router.get('/:id', authenticateToken, authorizeRoles('admin'), async (req, res) => {
+// Ruta para obtener un profesional por ID (accesible por admin, secretaria y profesional)
+router.get('/:id', authenticateToken, authorizeRoles('admin', 'secretaria', 'profesional'), async (req, res) => {
   try {
     const { id } = req.params;
     const professional = await pool.query(`

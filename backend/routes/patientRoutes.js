@@ -3,9 +3,9 @@ const router = express.Router();
 const pool = require('../config/db');
 const { authenticateToken, authorizeRoles } = require('../middleware/authMiddleware');
 
-// Ruta para obtener todos los pacientes (accesible por admin y profesional)
+// Ruta para obtener todos los pacientes (accesible por admin, profesional y secretaria)
 // Ahora incluye funcionalidad de búsqueda por cédula, nombre, apellido o email
-router.get('/', authenticateToken, authorizeRoles('admin', 'profesional'), async (req, res) => {
+router.get('/', authenticateToken, authorizeRoles('admin', 'profesional', 'secretaria'), async (req, res) => {
   try {
     const { search } = req.query; // Obtener el parámetro de búsqueda
     let query = 'SELECT p.id, p.cedula, p.nombre, p.apellido, p.fecha_nacimiento, p.genero, p.telefono, p.direccion, p.email, p.fecha_creacion, p.updated_at, \n       cb.nombre AS created_by_nombre, cb.apellido AS created_by_apellido, \n       ub.nombre AS updated_by_nombre, ub.apellido AS updated_by_apellido \n       FROM pacientes p\n       LEFT JOIN profesionales cb ON p.created_by_professional_id = cb.id\n       LEFT JOIN profesionales ub ON p.updated_by_professional_id = ub.id';
@@ -27,8 +27,8 @@ router.get('/', authenticateToken, authorizeRoles('admin', 'profesional'), async
   }
 });
 
-// Ruta para obtener un paciente por ID (accesible por admin y profesional)
-router.get('/:id', authenticateToken, authorizeRoles('admin', 'profesional'), async (req, res) => {
+// Ruta para obtener un paciente por ID (accesible por admin, profesional y secretaria)
+router.get('/:id', authenticateToken, authorizeRoles('admin', 'profesional', 'secretaria'), async (req, res) => {
   try {
     const { id } = req.params;
     const patient = await pool.query('SELECT p.id, p.cedula, p.nombre, p.apellido, p.fecha_nacimiento, p.genero, p.telefono, p.direccion, p.email, p.fecha_creacion, p.updated_at, \n       cb.nombre AS created_by_nombre, cb.apellido AS created_by_apellido, \n       ub.nombre AS updated_by_nombre, ub.apellido AS updated_by_apellido \n       FROM pacientes p\n       LEFT JOIN profesionales cb ON p.created_by_professional_id = cb.id\n       LEFT JOIN profesionales ub ON p.updated_by_professional_id = ub.id WHERE p.id = $1', [id]);
@@ -43,8 +43,8 @@ router.get('/:id', authenticateToken, authorizeRoles('admin', 'profesional'), as
   }
 });
 
-// Ruta para crear un nuevo paciente (accesible por admin y profesional)
-router.post('/', authenticateToken, authorizeRoles('admin', 'profesional'), async (req, res) => {
+// Ruta para crear un nuevo paciente (accesible por admin, profesional y secretaria)
+router.post('/', authenticateToken, authorizeRoles('admin', 'profesional', 'secretaria'), async (req, res) => {
   const { cedula, nombre, apellido, fecha_nacimiento, genero, telefono, direccion, email } = req.body;
   const professionalId = req.user.id; // ID del profesional autenticado
 
@@ -73,8 +73,8 @@ router.post('/', authenticateToken, authorizeRoles('admin', 'profesional'), asyn
   }
 });
 
-// Ruta para actualizar un paciente (accesible por admin y profesional)
-router.put('/:id', authenticateToken, authorizeRoles('admin', 'profesional'), async (req, res) => {
+// Ruta para actualizar un paciente (accesible por admin, profesional y secretaria)
+router.put('/:id', authenticateToken, authorizeRoles('admin', 'profesional', 'secretaria'), async (req, res) => {
   try {
     const { id } = req.params;
     const { cedula, nombre, apellido, fecha_nacimiento, genero, telefono, direccion, email } = req.body;

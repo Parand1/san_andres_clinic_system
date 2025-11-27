@@ -17,6 +17,7 @@ import AttentionManagement from './components/AttentionManagement';
 import AppointmentCalendar from './components/AppointmentCalendar'; // <-- NUEVO
 import CashBoxView from './components/CashBoxView'; // <-- NUEVO
 import ReportsView from './components/ReportsView'; // <-- NUEVO
+import TarifarioManagement from './components/TarifarioManagement'; // <-- NUEVO
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import SecretaryRoute from './components/SecretaryRoute'; // <-- NUEVO
@@ -47,6 +48,9 @@ function AppBarContent() {
                 <Button color="inherit" component={Link} to="/cashbox">
                   Gestión de Caja
                 </Button>
+                <Button color="inherit" component={Link} to="/tarifario">
+                  Tarifario
+                </Button>
               </>
             )}
             {user && user.rol === 'admin' && (
@@ -59,9 +63,11 @@ function AppBarContent() {
             <Button color="inherit" component={Link} to="/patients">
               Gestión de Pacientes
             </Button>
-            <Button color="inherit" component={Link} to="/attentions">
-              Gestión de Atenciones
-            </Button>
+            {(user && (user.rol === 'admin' || user.rol === 'profesional')) && (
+              <Button color="inherit" component={Link} to="/attentions">
+                Gestión de Atenciones
+              </Button>
+            )}
             <Button color="inherit" component={Link} to="/dashboard">
               Dashboard
             </Button>
@@ -120,6 +126,14 @@ function App() {
                   element={
                     <SecretaryRoute>
                       <CashBoxView />
+                    </SecretaryRoute>
+                  }
+                />
+                <Route
+                  path="/tarifario"
+                  element={
+                    <SecretaryRoute>
+                      <TarifarioManagement />
                     </SecretaryRoute>
                   }
                 />

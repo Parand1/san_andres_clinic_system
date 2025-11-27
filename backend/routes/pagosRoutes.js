@@ -68,12 +68,23 @@ router.post('/:id/registrar', authenticateToken, authorizeRoles('admin', 'secret
     }
     const pagoActualizado = pagoResult.rows[0];
 
-    // 2. Actualizar el estado de la cita a 'Pagada'
-    const citaResult = await client.query(
-      `UPDATE citas SET estado_cita = 'Pagada', updated_by_user_id = $1, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $2 RETURNING id, estado_cita`,
-      [userId, pagoActualizado.cita_id]
-    );
+    // 2. Actualizar el estado de la cita a 'Pagada' SOLO si está en estados iniciales
+    // Consultamos el estado actual de la cita
+    const citaQuery = await client.query('SELECT estado_cita FROM citas WHERE id = $1', [pagoActualizado.cita_id]);
+    const estadoActual = citaQuery.rows[0].estado_cita;
+
+    // Solo cambiamos a 'Pagada' si estaba en Programada o Confirmada
+    if (estadoActual === 'Programada' || estadoActual === 'Confirmada') {
+        await client.query(
+          `UPDATE citas SET estado_cita = 'Pagada', updated_by_user_id = $1, updated_at = CURRENT_TIMESTAMP
+           WHERE id = $2`,
+          [userId, pagoActualizado.cita_id]
+        );
+        await audit(userId, `Cambio de Estado: ${estadoActual} -> Pagada`, 'Cita', pagoActualizado.cita_id);
+    } else {
+        // Si ya estaba avanzada, solo registramos que hubo un pago asociado, pero no movemos el flujo clínico
+        await audit(userId, `Pago registrado para cita en estado: ${estadoActual}`, 'Cita', pagoActualizado.cita_id);
+    }
 
     // 3. Crear la transacción de caja
     await client.query(
@@ -98,15 +109,21 @@ router.post('/:id/registrar', authenticateToken, authorizeRoles('admin', 'secret
   }
 });
 
-// RUTA: POST /api/pagos/adicional - Crear un nuevo pago para cobros extra
-// Accesible para secretaria y admin
-router.post('/adicional', authenticateToken, authorizeRoles('admin', 'secretaria'), async (req, res) => {
+// RUTA: POST /api/pagos/adicional - Crear un nuevo pago (Cobro extra o Registro de Procedimiento)
+// Accesible para secretaria, admin y PROFESIONAL (para registrar procedimientos)
+router.post('/adicional', authenticateToken, authorizeRoles('admin', 'secretaria', 'profesional'), async (req, res) => {
     const { cita_id, paciente_id, items, metodo_pago, notas } = req.body;
     const userId = req.user.id;
 
     if (!cita_id || !paciente_id || !items || !Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ msg: 'Faltan datos para registrar el pago adicional.' });
+        return res.status(400).json({ msg: 'Faltan datos para registrar el cargo.' });
     }
+
+    // Si no hay método de pago, asumimos que es un cargo pendiente por cobrar en caja
+    const estadoPago = metodo_pago ? 'Pagado' : 'Pendiente';
+    // Usamos 'Efectivo' como placeholder si está pendiente, ya que la DB no permite nulos ni 'Por Definir' en el ENUM actual.
+    // Al cobrar, se actualizará con el método real.
+    const metodoPagoFinal = metodo_pago || 'Efectivo';
 
     const client = await pool.connect();
     try {
@@ -114,11 +131,11 @@ router.post('/adicional', authenticateToken, authorizeRoles('admin', 'secretaria
 
         const monto_total = items.reduce((sum, item) => sum + (item.cantidad * item.precio_unitario), 0);
 
-        // 1. Crear el registro de pago principal
+        // 1. Crear el registro de pago
         const newPago = await client.query(
             `INSERT INTO pagos (cita_id, paciente_id, monto_total, metodo_pago, estado_pago, registrado_por_user_id, notas, fecha_pago)
-             VALUES ($1, $2, $3, $4, 'Pagado', $5, $6, CURRENT_TIMESTAMP) RETURNING id`,
-            [cita_id, paciente_id, monto_total, metodo_pago, userId, notas]
+             VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP) RETURNING id`,
+            [cita_id, paciente_id, monto_total, metodoPagoFinal, estadoPago, userId, notas]
         );
         const pagoId = newPago.rows[0].id;
 
@@ -131,18 +148,20 @@ router.post('/adicional', authenticateToken, authorizeRoles('admin', 'secretaria
             );
         }
 
-        // 3. Crear la transacción de caja
-        await client.query(
-            `INSERT INTO transacciones_caja (tipo_transaccion, monto, metodo_pago, descripcion, usuario_id, pago_id)
-             VALUES ('Ingreso Adicional', $1, $2, $3, $4, $5)`,
-            [monto_total, metodo_pago, `Cobro adicional para cita #${cita_id}`, userId, pagoId]
-        );
+        // 3. Crear la transacción de caja SOLO SI se pagó efectivamente
+        if (estadoPago === 'Pagado') {
+            await client.query(
+                `INSERT INTO transacciones_caja (tipo_transaccion, monto, metodo_pago, descripcion, usuario_id, pago_id)
+                 VALUES ('Ingreso Adicional', $1, $2, $3, $4, $5)`,
+                [monto_total, metodoPagoFinal, `Cobro adicional para cita #${cita_id}`, userId, pagoId]
+            );
+        }
 
         // 4. Registrar en auditoría
-        await audit(userId, 'Registro de Pago Adicional', 'Pago', pagoId, { monto: monto_total, items: items.length });
+        await audit(userId, `Registro de Cargo Adicional (${estadoPago})`, 'Pago', pagoId, { monto: monto_total, items: items.length });
 
         await client.query('COMMIT');
-        res.status(201).json({ msg: 'Pago adicional registrado con éxito', pago_id: pagoId });
+        res.status(201).json({ msg: `Cargo registrado exitosamente (${estadoPago})`, pago_id: pagoId });
 
     } catch (err) {
         await client.query('ROLLBACK');
