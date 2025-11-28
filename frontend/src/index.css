@@ -19,3 +19,16 @@ code {
   right: 0 !important;
   margin-bottom: 2px; /* Opcional: para añadir un pequeño espacio entre eventos apilados */
 }
+
+/* Ocultar icono nativo de 'mostrar contraseña' en Edge/IE */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+/* Ocultar icono nativo de 'mostrar contraseña' en Chrome/Brave/Opera recientes (si aplica) */
+input[type="password"]::-webkit-credentials-auto-fill-button {
+    visibility: hidden;
+    position: absolute;
+    right: 0;
+}

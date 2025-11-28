@@ -18,38 +18,141 @@ import {
   Alert,
   IconButton,
   Dialog,
-  TextField
+  TextField,
+  Card,
+  CardContent,
+  Avatar,
+  useTheme,
+  Tooltip
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import PostAddIcon from '@mui/icons-material/PostAdd';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import TodayIcon from '@mui/icons-material/Today';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import { useAuth } from '../AuthContext';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import EventIcon from '@mui/icons-material/Event';
+import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
+import WavingHandIcon from '@mui/icons-material/WavingHand';
 import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
+
+import { useAuth } from '../AuthContext';
 import PaymentDialog from './PaymentDialog';
 import AddProcedureDialog from './AddProcedureDialog';
 
-const motivationalQuotes = [
-  "La buena medicina es la que actúa menos sobre los síntomas que sobre sus causas.",
-  "El arte de la medicina es animar al paciente mientras la naturaleza lo cura.",
-  "Donde quiera que se ame el arte de la medicina, se ama también a la humanidad.",
-];
-
-// Helper para formato YYYY-MM-DD en el input date
+// Helper para formato YYYY-MM-DD
 const formatDateForInput = (date) => {
   const d = new Date(date);
   let month = '' + (d.getMonth() + 1);
   let day = '' + d.getDate();
   const year = d.getFullYear();
-
   if (month.length < 2) month = '0' + month;
   if (day.length < 2) day = '0' + day;
-
   return [year, month, day].join('-');
 };
+
+// --- SUBCOMPONENTES VISUALES ---
+
+function WelcomeHeader({ user }) {
+    const theme = useTheme();
+    
+    return (
+        <Paper 
+            elevation={0} 
+            sx={{ 
+                p: 4, 
+                mb: 4, 
+                borderRadius: 4,
+                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                boxShadow: '0 10px 20px rgba(0,0,0,0.1)'
+            }}
+        >
+            <Box>
+                <Typography variant="h4" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <WavingHandIcon sx={{ color: '#FFD700' }} /> ¡Hola, {user?.nombre}!
+                </Typography>
+                <Typography variant="subtitle1" sx={{ mt: 1, opacity: 0.9 }}>
+                    {user?.rol === 'profesional' 
+                        ? 'Listo para cuidar de tus pacientes hoy.' 
+                        : 'Administrando la excelencia en salud.'}
+                </Typography>
+                <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                    <Chip label={user?.rol} sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontWeight: 'bold' }} />
+                    {user?.rol === 'profesional' && (
+                        <Chip label={user.especialidades?.[0] || 'Medicina'} sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }} />
+                    )}
+                </Box>
+            </Box>
+            <Avatar 
+                sx={{ 
+                    width: 100, 
+                    height: 100, 
+                    bgcolor: 'rgba(255,255,255,0.9)', 
+                    color: theme.palette.primary.main,
+                    fontSize: '2.5rem',
+                    fontWeight: 'bold',
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+                    display: { xs: 'none', sm: 'flex' }
+                }}
+            >
+                {user?.nombre?.[0]}{user?.apellido?.[0]}
+            </Avatar>
+        </Paper>
+    );
+}
+
+function QuickActions({ user }) {
+    return (
+        <Grid container spacing={2} sx={{ mb: 4 }}>
+            {(user.rol === 'secretaria' || user.rol === 'admin') && (
+                <>
+                    <Grid item xs={12} sm={4}>
+                        <Button 
+                            fullWidth 
+                            variant="outlined" 
+                            component={Link} 
+                            to="/appointments"
+                            startIcon={<EventIcon />}
+                            sx={{ py: 2, borderRadius: 3, border: '2px solid', '&:hover': { borderWidth: '2px' } }}
+                        >
+                            Nueva Cita
+                        </Button>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                        <Button 
+                            fullWidth 
+                            variant="outlined" 
+                            component={Link} 
+                            to="/patients"
+                            startIcon={<PersonAddIcon />}
+                            sx={{ py: 2, borderRadius: 3, border: '2px solid', '&:hover': { borderWidth: '2px' } }}
+                        >
+                            Nuevo Paciente
+                        </Button>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                        <Button 
+                            fullWidth 
+                            variant="outlined" 
+                            component={Link} 
+                            to="/cashbox"
+                            startIcon={<PointOfSaleIcon />}
+                            sx={{ py: 2, borderRadius: 3, border: '2px solid', '&:hover': { borderWidth: '2px' } }}
+                        >
+                            Ver Caja
+                        </Button>
+                    </Grid>
+                </>
+            )}
+        </Grid>
+    );
+}
 
 function DailyAppointmentsTable() {
   const { token, user, logout } = useAuth();
@@ -68,7 +171,6 @@ function DailyAppointmentsTable() {
   const fetchAppointments = async () => {
     const dateStart = new Date(selectedDate);
     dateStart.setHours(0, 0, 0, 0);
-    
     const dateEnd = new Date(selectedDate);
     dateEnd.setHours(23, 59, 59, 999);
     
@@ -85,16 +187,12 @@ function DailyAppointmentsTable() {
       const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       
       if (response.status === 403) {
-        logout();
-        return;
+        logout(); return;
       }
 
       const data = await response.json();
-      if (response.ok) {
-        setAppointments(data);
-      } else {
-        setError(data.msg || 'Error al cargar citas.');
-      }
+      if (response.ok) setAppointments(data);
+      else setError(data.msg || 'Error al cargar citas.');
     } catch (err) {
       setError('No se pudo conectar con el servidor.');
     } finally {
@@ -103,92 +201,57 @@ function DailyAppointmentsTable() {
   };
 
   useEffect(() => {
-    if (token) {
-      fetchAppointments();
-    }
+    if (token) fetchAppointments();
   }, [token, user, selectedDate]);
 
+  // Manejadores de Fecha
   const handlePrevDay = () => {
     const newDate = new Date(selectedDate);
     newDate.setDate(selectedDate.getDate() - 1);
     setSelectedDate(newDate);
   };
-
   const handleNextDay = () => {
     const newDate = new Date(selectedDate);
     newDate.setDate(selectedDate.getDate() + 1);
     setSelectedDate(newDate);
   };
-
-  const handleToday = () => {
-    setSelectedDate(new Date());
-  };
-
+  const handleToday = () => { setSelectedDate(new Date()); };
   const handleOpenDatePicker = () => {
       setTempDate(formatDateForInput(selectedDate));
       setDatePickerOpen(true);
   };
-
   const handleConfirmDate = () => {
     if (tempDate) {
         const [year, month, day] = tempDate.split('-').map(Number);
-        const newDate = new Date(year, month - 1, day);
-        setSelectedDate(newDate);
+        setSelectedDate(new Date(year, month - 1, day));
     }
     setDatePickerOpen(false);
   };
+  const formatDate = (date) => date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-  const formatDate = (date) => {
-    return date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  };
-
+  // Manejadores de Acciones
   const handleUpdateState = async (id, newState) => {
     setError('');
     try {
         const response = await fetch(`/api/citas/${id}/estado`, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-            },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ nuevo_estado: newState }),
         });
-
-        if (response.ok) {
-            fetchAppointments();
-        } else {
+        if (response.ok) fetchAppointments();
+        else {
             const data = await response.json();
-            console.error("Error detallado del servidor:", data);
             setError(data.msg || 'Error al actualizar el estado.');
         }
-    } catch (err) {
-        console.error("Error de red:", err);
-        setError('No se pudo conectar al servidor para actualizar.');
-    }
+    } catch (err) { setError('No se pudo conectar al servidor.'); }
   };
 
-  const handleOpenPaymentDialog = (appointment) => {
-    setSelectedAppointment(appointment);
-    setPaymentDialogOpen(true);
-  };
-
-  const handleClosePaymentDialog = () => {
-    setSelectedAppointment(null);
-    setPaymentDialogOpen(false);
-  };
-
-  const handleOpenProcedureDialog = (appointment) => {
-    setSelectedAppointment(appointment);
-    setProcedureDialogOpen(true);
-  };
-
-  const handleCloseProcedureDialog = () => {
-    setSelectedAppointment(null);
-    setProcedureDialogOpen(false);
-  };
+  const handleOpenPaymentDialog = (apt) => { setSelectedAppointment(apt); setPaymentDialogOpen(true); };
+  const handleOpenProcedureDialog = (apt) => { setSelectedAppointment(apt); setProcedureDialogOpen(true); };
+  const handleAttend = (apt, targetView = 'details') => { navigate('/attentions', { state: { appointmentData: apt, targetView } }); };
 
   const handleProcedureSaveSuccess = () => {
-    fetchAppointments();
+    fetchAppointments(); 
   };
 
   const handleSavePayment = async (paymentData) => {
@@ -200,329 +263,327 @@ function DailyAppointmentsTable() {
             const payload = {
                 cita_id: selectedAppointment.id,
                 paciente_id: selectedAppointment.paciente_id,
-                items: paymentData.items.map(item => ({
-                    descripcion: item.nombre,
-                    precio_unitario: item.precio,
-                    cantidad: item.cantidad
-                })),
+                items: paymentData.items.map(item => ({ descripcion: item.nombre, precio_unitario: item.precio, cantidad: item.cantidad })),
                 metodo_pago: paymentData.metodo_pago,
                 notas: paymentData.notas
             };
-
             const responsePago = await fetch('/api/pagos/adicional', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify(payload),
             });
-
-            if (!responsePago.ok) {
-                const data = await responsePago.json();
-                throw new Error(data.msg || 'Error al registrar el pago inicial.');
-            }
+            if (!responsePago.ok) throw new Error('Error al registrar pago inicial.');
 
             const responseCita = await fetch(`/api/citas/${selectedAppointment.id}/estado`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ nuevo_estado: 'Pagada' }),
             });
-
-            if (!responseCita.ok) {
-                throw new Error('Pago registrado, pero error al actualizar estado de la cita.');
-            }
+            if (!responseCita.ok) throw new Error('Error al actualizar estado de cita.');
 
             fetchAppointments();
-            handleClosePaymentDialog();
-
-        } catch (err) {
-            setError(err.message || 'Error de comunicación.');
-        }
+            setPaymentDialogOpen(false);
+        } catch (err) { setError(err.message); }
         return;
     }
 
+    // Cobro deuda
     let pagoIdToProcess = paymentData.pagoId;
-
     if (!pagoIdToProcess) {
+        // Búsqueda fallback
         try {
             const pagosResponse = await fetch(`/api/pagos?cita_id=${selectedAppointment.id}`, { headers: { Authorization: `Bearer ${token}` } });
             const pagos = await pagosResponse.json();
             const pagoPendiente = pagos.find(p => p.estado_pago === 'Pendiente');
-
-            if (!pagoPendiente) {
-                setError('No se encontró un pago pendiente para esta cita.');
-                return;
-            }
+            if (!pagoPendiente) { setError('No se encontró pago pendiente.'); return; }
             pagoIdToProcess = pagoPendiente.id;
-        } catch (err) {
-             setError('Error al buscar pagos pendientes.');
-             return;
-        }
+        } catch(err) { setError('Error buscando pagos.'); return; }
     }
 
     try {
         const response = await fetch(`/api/pagos/${pagoIdToProcess}/registrar`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-                metodo_pago: paymentData.metodo_pago,
-                notas: paymentData.notas
-            }),
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ metodo_pago: paymentData.metodo_pago, notas: paymentData.notas }),
         });
-
-        if (response.ok) {
-            fetchAppointments();
-            handleClosePaymentDialog();
-        } else {
-            const data = await response.json();
-            setError(data.msg || 'Error al registrar el pago.');
-        }
-    } catch (err) {
-        setError('Error de comunicación al registrar el pago.');
-    }
+        if (response.ok) { fetchAppointments(); setPaymentDialogOpen(false); }
+        else { const data = await response.json(); setError(data.msg); }
+    } catch (err) { setError('Error de comunicación.'); }
   };
 
-  const handleAttend = (appointment, targetView = 'details') => {
-    navigate('/attentions', { state: { appointmentData: appointment, targetView } });
-  };
-
-  if (loading) return <CircularProgress />;
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>;
   if (error) return <Alert severity="error">{error}</Alert>;
 
   return (
-    <>
-      <TableContainer component={Paper} sx={{ mt: 3 }}>
+    <Paper elevation={2} sx={{ borderRadius: 4, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.05)' }}>
+        {/* HEADER DE LA TABLA */}
         <Box sx={{ 
-            p: 2, 
+            p: 3, 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'space-between', 
-            backgroundColor: '#f5f5f5',
-            borderBottom: '1px solid #ddd'
+            bgcolor: '#fafafa',
+            borderBottom: '1px solid rgba(0,0,0,0.08)'
         }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <IconButton onClick={handlePrevDay}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <IconButton onClick={handlePrevDay} size="small" sx={{ bgcolor: 'white', boxShadow: 1 }}>
                     <ChevronLeftIcon />
                 </IconButton>
                 
-                <Typography variant="h6" sx={{ mx: 2, minWidth: 200, textTransform: 'capitalize', textAlign: 'center' }}>
+                <Typography variant="h6" sx={{ mx: 2, minWidth: 220, textTransform: 'capitalize', textAlign: 'center', fontWeight: 600, color: '#333' }}>
                     {formatDate(selectedDate)}
                 </Typography>
 
-                <IconButton onClick={handleNextDay}>
+                <IconButton onClick={handleNextDay} size="small" sx={{ bgcolor: 'white', boxShadow: 1 }}>
                     <ChevronRightIcon />
                 </IconButton>
                 
-                <Button 
-                    variant="outlined" 
-                    size="small" 
-                    startIcon={<TodayIcon />} 
-                    onClick={handleToday}
-                    sx={{ ml: 2 }}
-                >
+                <Button variant="text" size="small" startIcon={<TodayIcon />} onClick={handleToday} sx={{ ml: 2 }}>
                     Hoy
                 </Button>
-                <Button 
-                    variant="outlined" 
-                    size="small" 
-                    startIcon={<CalendarMonthIcon />} 
-                    onClick={handleOpenDatePicker}
-                    sx={{ ml: 1 }}
-                >
-                    Elegir Fecha
-                </Button>
+                <Tooltip title="Seleccionar fecha">
+                    <IconButton size="small" onClick={handleOpenDatePicker} color="primary">
+                        <CalendarMonthIcon />
+                    </IconButton>
+                </Tooltip>
             </Box>
-            <Typography variant="h6" color="text.secondary">
-                Citas
-            </Typography>
+            
+            <Chip 
+                icon={<EventIcon />} 
+                label={`${appointments.length} Citas`} 
+                color="primary" 
+                variant="outlined" 
+                sx={{ fontWeight: 'bold' }}
+            />
         </Box>
 
-        {/* DIÁLOGO SELECTOR DE FECHA */}
+        <TableContainer>
+          <Table>
+            <TableHead sx={{ bgcolor: '#fff' }}>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 'bold', color: '#777' }}>HORA</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: '#777' }}>PACIENTE</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: '#777' }}>PROFESIONAL</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: '#777' }}>TIPO</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: '#777' }}>ESTADO</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', color: '#777' }}>ACCIONES</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+                {appointments.length === 0 ? (
+                    <TableRow>
+                        <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                            <Typography variant="body1" color="text.secondary">No hay citas para este día.</Typography>
+                        </TableCell>
+                    </TableRow>
+                ) : (
+                    appointments.map((apt) => (
+                    <TableRow key={apt.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                        <TableCell sx={{ fontWeight: 600, color: '#333' }}>
+                            {new Date(apt.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </TableCell>
+                        <TableCell>{apt.title}</TableCell>
+                        <TableCell>Dr. {apt.profesional_apellido}</TableCell>
+                        <TableCell>
+                            <Chip label={apt.tipo_atencion} size="small" sx={{ bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 500 }} />
+                        </TableCell>
+                        <TableCell>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Chip 
+                                    label={apt.estado_cita} 
+                                    size="small" 
+                                    color={
+                                        apt.estado_cita === 'Pagada' ? 'success' : 
+                                        apt.estado_cita === 'Atendiendo' ? 'info' : 'default'
+                                    } 
+                                    variant={apt.estado_cita === 'Pagada' ? 'filled' : 'outlined'}
+                                />
+                                {apt.tiene_pagos_pendientes && (
+                                    <Chip icon={<MonetizationOnIcon />} label="Deuda" size="small" color="error" />
+                                )}
+                            </Box>
+                        </TableCell>
+                        <TableCell>
+                            {/* LÓGICA DE ACCIONES REFINADA */}
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                {(user.rol === 'secretaria' || user.rol === 'admin') && apt.tiene_pagos_pendientes && (
+                                    <Button size="small" variant="contained" color="error" onClick={() => handleOpenPaymentDialog(apt)}>Cobrar</Button>
+                                )}
+                                {(user.rol === 'secretaria' || user.rol === 'admin') && apt.estado_cita === 'Confirmada' && !apt.tiene_pagos_pendientes && (
+                                    <Button size="small" variant="contained" color="success" onClick={() => handleOpenPaymentDialog(apt)}>Pagar</Button>
+                                )}
+                                {(user.rol === 'secretaria' || user.rol === 'admin') && apt.estado_cita === 'Programada' && (
+                                    <Button size="small" variant="outlined" onClick={() => handleUpdateState(apt.id, 'Confirmada')}>Confirmar</Button>
+                                )}
+                                {(user.rol === 'secretaria' || user.rol === 'admin') && apt.estado_cita === 'Pagada' && (
+                                    <Button size="small" variant="outlined" color="secondary" onClick={() => handleUpdateState(apt.id, 'En Sala de Espera')}>Check-In</Button>
+                                )}
+                                {(user.rol === 'profesional' || user.rol === 'admin') && apt.estado_cita === 'En Sala de Espera' && (
+                                    <Button size="small" variant="contained" color="primary" onClick={() => handleAttend(apt)}>Atender</Button>
+                                )}
+                                {(user.rol === 'profesional' || user.rol === 'admin') && apt.estado_cita === 'Atendiendo' && (
+                                    <>
+                                        <Button size="small" variant="outlined" onClick={() => handleAttend(apt)}>Seguir</Button>
+                                        <Tooltip title="Añadir Procedimiento">
+                                            <IconButton size="small" color="secondary" onClick={() => handleOpenProcedureDialog(apt)}><PostAddIcon /></IconButton>
+                                        </Tooltip>
+                                        <Button size="small" variant="contained" color="warning" onClick={() => handleUpdateState(apt.id, 'Completada')}>Fin</Button>
+                                    </>
+                                )}
+                                {(user.rol === 'profesional' || user.rol === 'admin') && apt.estado_cita === 'Completada' && (
+                                    <Button size="small" variant="outlined" onClick={() => handleAttend(apt, 'history')}>Historial</Button>
+                                )}
+                            </Box>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {/* DIÁLOGOS */}
         <Dialog open={datePickerOpen} onClose={() => setDatePickerOpen(false)}>
             <Box sx={{ p: 3, minWidth: 300 }}>
-                <Typography variant="h6" gutterBottom>Ir a una fecha específica</Typography>
-                <TextField
-                    type="date"
-                    value={tempDate}
-                    onChange={(e) => setTempDate(e.target.value)}
-                    fullWidth
-                    autoFocus
-                />
+                <Typography variant="h6" gutterBottom>Ir a una fecha</Typography>
+                <TextField type="date" value={tempDate} onChange={(e) => setTempDate(e.target.value)} fullWidth autoFocus />
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 1 }}>
                     <Button onClick={() => setDatePickerOpen(false)}>Cancelar</Button>
-                    <Button variant="contained" onClick={handleConfirmDate}>Aceptar</Button>
+                    <Button variant="contained" onClick={handleConfirmDate}>Ir</Button>
                 </Box>
             </Box>
         </Dialog>
-
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Hora</TableCell>
-              <TableCell>Paciente</TableCell>
-              <TableCell>Profesional</TableCell>
-              <TableCell>Tipo</TableCell>
-              <TableCell>Estado</TableCell>
-              <TableCell>Acciones</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {appointments.length === 0 ? (
-                <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                        <Typography variant="body1" color="text.secondary">
-                            No hay citas programadas para este día.
-                        </Typography>
-                    </TableCell>
-                </TableRow>
-            ) : (
-                appointments.map((apt) => (
-                <TableRow key={apt.id}>
-                    <TableCell>{new Date(apt.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</TableCell>
-                    <TableCell>{apt.title}</TableCell>
-                    <TableCell>{`${apt.profesional_nombre} ${apt.profesional_apellido}`}</TableCell>
-                    <TableCell>{apt.tipo_atencion}</TableCell>
-                    <TableCell>
-                    <Chip 
-                        label={apt.estado_cita} 
-                        size="small" 
-                        color={
-                        apt.estado_cita === 'Pagada' ? 'success' : 
-                        apt.estado_cita === 'Atendiendo' ? 'info' :
-                        apt.estado_cita === 'Completada' ? 'default' : 'default'
-                        } 
-                    />
-                    {apt.tiene_pagos_pendientes && (
-                        <Chip 
-                        icon={<MonetizationOnIcon />}
-                        label="Saldo Pendiente"
-                        size="small"
-                        color="error"
-                        sx={{ ml: 1 }}
-                        />
-                    )}
-                    </TableCell>
-                    <TableCell>
-                    {(user.rol === 'secretaria' || user.rol === 'admin') && apt.tiene_pagos_pendientes && (
-                        <Button size="small" variant="contained" color="error" onClick={() => handleOpenPaymentDialog(apt)} sx={{ mr: 1 }}>Cobrar Saldo</Button>
-                    )}
-                    {(user.rol === 'secretaria' || user.rol === 'admin') && apt.estado_cita === 'Confirmada' && !apt.tiene_pagos_pendientes && (
-                        <Button size="small" variant="contained" color="success" onClick={() => handleOpenPaymentDialog(apt)}>Registrar Pago</Button>
-                    )}
-                    {(user.rol === 'secretaria' || user.rol === 'admin') && apt.estado_cita === 'Programada' && (
-                        <Button size="small" onClick={() => handleUpdateState(apt.id, 'Confirmada')}>Confirmar</Button>
-                    )}
-                    {(user.rol === 'secretaria' || user.rol === 'admin') && apt.estado_cita === 'Pagada' && (
-                        <Button size="small" onClick={() => handleUpdateState(apt.id, 'En Sala de Espera')}>Check-In</Button>
-                    )}
-                    {(user.rol === 'profesional' || user.rol === 'admin') && apt.estado_cita === 'En Sala de Espera' && (
-                        <Button size="small" variant="contained" color="primary" onClick={() => handleAttend(apt)}>Atender</Button>
-                    )}
-                    {(user.rol === 'profesional' || user.rol === 'admin') && apt.estado_cita === 'Atendiendo' && (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                        <Button size="small" variant="outlined" color="info" onClick={() => handleAttend(apt)}>Continuar Atención</Button>
-                        <Button 
-                            size="small" 
-                            variant="outlined" 
-                            color="secondary" 
-                            startIcon={<PostAddIcon />}
-                            onClick={() => handleOpenProcedureDialog(apt)}
-                        >
-                            Registrar Procedimiento
-                        </Button>
-                        <Button size="small" variant="contained" color="warning" onClick={() => handleUpdateState(apt.id, 'Completada')}>Finalizar Atención</Button>
-                        </Box>
-                    )}
-                    {(user.rol === 'profesional' || user.rol === 'admin') && apt.estado_cita === 'Completada' && (
-                        <Button size="small" variant="outlined" onClick={() => handleAttend(apt, 'history')}>Ver Historia</Button>
-                    )}
-                    </TableCell>
-                </TableRow>
-                ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      {selectedAppointment && (
-        <PaymentDialog 
-            open={paymentDialogOpen} 
-            onClose={handleClosePaymentDialog} 
-            onSave={handleSavePayment} 
-            appointment={selectedAppointment} 
-        />
-      )}
-
-      {selectedAppointment && (
-        <AddProcedureDialog
-            open={procedureDialogOpen}
-            onClose={handleCloseProcedureDialog}
-            appointment={selectedAppointment}
-            onSaveSuccess={handleProcedureSaveSuccess}
-        />
-      )}
-    </>
+        
+        {selectedAppointment && <PaymentDialog open={paymentDialogOpen} onClose={() => setPaymentDialogOpen(false)} onSave={handleSavePayment} appointment={selectedAppointment} />}
+        {selectedAppointment && <AddProcedureDialog open={procedureDialogOpen} onClose={() => setProcedureDialogOpen(false)} appointment={selectedAppointment} onSaveSuccess={handleProcedureSaveSuccess} />}
+    </Paper>
   );
 }
 
+// --- NUEVO COMPONENTE HEADER UNIFICADO ---
+function DashboardHeader({ user }) {
+    const theme = useTheme();
+    const today = new Date();
+    const dayName = today.toLocaleDateString('es-ES', { weekday: 'long' });
+    const dayNumber = today.getDate();
+    const monthName = today.toLocaleDateString('es-ES', { month: 'long' });
+    const year = today.getFullYear();
+
+    return (
+        <Paper 
+            elevation={3} 
+            sx={{ 
+                p: { xs: 2, md: 4 }, 
+                mb: 4, 
+                borderRadius: 4,
+                background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
+                color: 'white',
+                display: 'flex',
+                flexDirection: { xs: 'column', md: 'row' },
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 3,
+                overflow: 'hidden',
+                position: 'relative'
+            }}
+        >
+            {/* Decoración de fondo sutil */}
+            <Box sx={{ 
+                position: 'absolute', 
+                top: -50, left: -50, 
+                width: 200, height: 200, 
+                borderRadius: '50%', 
+                bgcolor: 'rgba(255,255,255,0.1)' 
+            }} />
+
+            {/* SECCIÓN IZQUIERDA: BIENVENIDA */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, zIndex: 1, width: { xs: '100%', md: 'auto' } }}>
+                <Avatar 
+                    sx={{ 
+                        width: { xs: 60, md: 90 }, 
+                        height: { xs: 60, md: 90 }, 
+                        bgcolor: 'rgba(255,255,255,0.95)', 
+                        color: theme.palette.primary.main,
+                        fontSize: { xs: '1.5rem', md: '2.5rem' },
+                        fontWeight: 'bold',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+                    }}
+                >
+                    {user?.nombre?.[0]}{user?.apellido?.[0]}
+                </Avatar>
+                <Box>
+                    <Typography variant="h4" fontWeight="800" sx={{ fontSize: { xs: '1.5rem', md: '2.2rem' } }}>
+                        Hola, {user?.nombre}
+                    </Typography>
+                    <Typography variant="subtitle1" sx={{ opacity: 0.95, fontWeight: 500 }}>
+                        {user?.rol === 'profesional' 
+                            ? 'Que tengas una excelente jornada clínica.' 
+                            : 'Bienvenido al panel de gestión administrativa.'}
+                    </Typography>
+                    <Box sx={{ mt: 1.5, display: 'flex', gap: 1 }}>
+                        <Chip 
+                            label={user?.rol?.toUpperCase()} 
+                            size="small" 
+                            sx={{ bgcolor: 'rgba(0,0,0,0.2)', color: 'white', fontWeight: 'bold', letterSpacing: 1 }} 
+                        />
+                    </Box>
+                </Box>
+            </Box>
+
+            {/* SECCIÓN DERECHA: WIDGET DE FECHA INTEGRADO */}
+            <Box sx={{ 
+                bgcolor: 'rgba(255,255,255,0.15)', 
+                backdropFilter: 'blur(10px)',
+                borderRadius: 3,
+                p: 2,
+                minWidth: 180,
+                textAlign: 'center',
+                border: '1px solid rgba(255,255,255,0.2)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                zIndex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center'
+            }}>
+                <Typography variant="subtitle2" sx={{ textTransform: 'uppercase', letterSpacing: 2, opacity: 0.9 }}>
+                    {dayName}
+                </Typography>
+                <Typography variant="h2" sx={{ fontWeight: 900, lineHeight: 1, my: 0.5, textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+                    {dayNumber}
+                </Typography>
+                <Typography variant="h6" sx={{ textTransform: 'capitalize', fontWeight: 400 }}>
+                    {monthName} {year}
+                </Typography>
+            </Box>
+        </Paper>
+    );
+}
+
+// --- COMPONENTE PRINCIPAL DASHBOARD ---
+
 function Dashboard() {
   const { user } = useAuth();
-  const [quote] = useState(motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]);
-
-  const today = new Date();
-  const dateString = today.toLocaleDateString('es-ES', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={8}>
-          <Paper elevation={3} sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <Typography variant="h4" component="h1" gutterBottom>
-              ¡Bienvenido, {user ? user.nombre : 'Usuario'}!
-            </Typography>
-            <Typography variant="h6" color="text.secondary">
-              Rol: {user ? user.rol : 'N/A'}
-            </Typography>
-            {user && user.rol === 'profesional' && (
-                <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
-                    Especialidades: {user?.especialidades?.join(', ') || 'No asignadas'}
-                </Typography>
-            )}
-            <Divider sx={{ my: 2 }} />
-            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <Typography variant="body1" sx={{ fontStyle: 'italic', textAlign: 'center' }}>
-                "{quote}"
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
+    <Container maxWidth="xl" sx={{ mt: 4, mb: 8 }}>
+      {/* 1. ENCABEZADO UNIFICADO (FULL WIDTH) */}
+      <DashboardHeader user={user} />
 
-        <Grid item xs={12} md={4}>
-          <Paper elevation={3} sx={{ p: 3, textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-            <Typography variant="h5" component="p" color="primary" sx={{ textTransform: 'capitalize' }}>
-              {dateString}
-            </Typography>
-            <MedicalServicesIcon sx={{ fontSize: 100, color: 'primary.main', mt: 2 }} />
-          </Paper>
-        </Grid>
+      {/* 2. ACCIONES RÁPIDAS */}
+      <QuickActions user={user} />
 
-        {(user.rol === 'admin' || user.rol === 'secretaria' || user.rol === 'profesional') && (
-            <Grid item xs={12}>
+      {/* 3. AGENDA OPERATIVA (FULL WIDTH) */}
+      <Grid container spacing={4}>
+        <Grid item xs={12}>
+            <Paper elevation={0} sx={{ p: 0, bgcolor: 'transparent' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h5" fontWeight="bold" sx={{ color: '#444' }}>
+                        Agenda Operativa
+                    </Typography>
+                </Box>
                 <DailyAppointmentsTable />
-            </Grid>
-        )}
+            </Paper>
+        </Grid>
       </Grid>
     </Container>
   );
