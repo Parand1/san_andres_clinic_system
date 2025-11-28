@@ -22,13 +22,37 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  InputAdornment, // Nuevo
+  InputAdornment,
+  Avatar,
+  Chip,
+  Tooltip,
+  CircularProgress,
+  Stack,
+  Divider
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import SearchIcon from '@mui/icons-material/Search'; // Nuevo
+import SearchIcon from '@mui/icons-material/Search';
+import EmailIcon from '@mui/icons-material/Email';
+import PhoneIcon from '@mui/icons-material/Phone';
+import BadgeIcon from '@mui/icons-material/Badge';
 import { useAuth } from '../AuthContext';
+
+// Función para generar color de avatar basado en el nombre
+function stringToColor(string) {
+  let hash = 0;
+  let i;
+  for (i = 0; i < string.length; i += 1) {
+    hash = string.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let color = '#';
+  for (i = 0; i < 3; i += 1) {
+    const value = (hash >> (i * 8)) & 0xff;
+    color += `00${value.toString(16)}`.substr(-2);
+  }
+  return color;
+}
 
 function PatientManagement() {
   const { token, user } = useAuth();
@@ -37,7 +61,7 @@ function PatientManagement() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(''); // Nuevo estado para el término de búsqueda con debounce
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
   const [openDialog, setOpenDialog] = useState(false);
   const [currentPatient, setCurrentPatient] = useState(null);
@@ -52,18 +76,14 @@ function PatientManagement() {
     email: '',
   });
 
-  // Efecto para el debounce del término de búsqueda
   useEffect(() => {
     const timerId = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 500); // 500ms de retardo
-
-    return () => {
-      clearTimeout(timerId);
-    };
+    }, 500);
+    return () => clearTimeout(timerId);
   }, [searchTerm]);
 
-  const fetchPatients = async (currentSearchTerm) => { // Aceptar el término de búsqueda como argumento
+  const fetchPatients = async (currentSearchTerm) => {
     setLoading(true);
     setError('');
     try {
@@ -72,9 +92,7 @@ function PatientManagement() {
         : '/api/patients';
 
       const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
       if (response.ok) {
@@ -83,8 +101,7 @@ function PatientManagement() {
         setError(data.msg || 'Error al cargar pacientes.');
       }
     } catch (err) {
-      console.error('Error de red:', err);
-      setError('No se pudo conectar con el servidor para cargar pacientes.');
+      setError('No se pudo conectar con el servidor.');
     } finally {
       setLoading(false);
     }
@@ -92,9 +109,9 @@ function PatientManagement() {
 
   useEffect(() => {
     if (token && user) {
-      fetchPatients(debouncedSearchTerm); // Usar el término de búsqueda con debounce
+      fetchPatients(debouncedSearchTerm);
     }
-  }, [token, user, debouncedSearchTerm]); // Depender del término de búsqueda con debounce
+  }, [token, user, debouncedSearchTerm]);
 
   const handleOpenAddDialog = () => {
     setCurrentPatient(null);
@@ -128,8 +145,7 @@ function PatientManagement() {
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setError('');
-    setSuccess('');
+    setError(''); setSuccess('');
   };
 
   const handleChange = (e) => {
@@ -138,13 +154,10 @@ function PatientManagement() {
 
   const handleSavePatient = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setError(''); setSuccess('');
 
     const method = currentPatient ? 'PUT' : 'POST';
-    const url = currentPatient
-      ? `/api/patients/${currentPatient.id}`
-      : '/api/patients';
+    const url = currentPatient ? `/api/patients/${currentPatient.id}` : '/api/patients';
 
     try {
       const response = await fetch(url, {
@@ -160,264 +173,271 @@ function PatientManagement() {
 
       if (response.ok) {
         setSuccess(data.msg || 'Operación exitosa.');
-        fetchPatients(debouncedSearchTerm); // Recargar la lista con el término de búsqueda actual
+        fetchPatients(debouncedSearchTerm);
         handleCloseDialog();
       } else {
         setError(data.msg || 'Error al guardar paciente.');
       }
     } catch (err) {
-      console.error('Error de red:', err);
       setError('No se pudo conectar con el servidor.');
     }
   };
 
   const handleDeletePatient = async (id) => {
-    if (!window.confirm('¿Está seguro de que desea eliminar este paciente? Esta acción es irreversible.')) {
-      return;
-    }
-    setError('');
-    setSuccess('');
+    if (!window.confirm('¿Está seguro de eliminar este paciente?')) return;
     try {
       const response = await fetch(`/api/patients/${id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
       if (response.ok) {
-        setSuccess(data.msg || 'Paciente eliminado exitosamente.');
-        fetchPatients(debouncedSearchTerm); // Recargar la lista con el término de búsqueda actual
+        setSuccess(data.msg || 'Paciente eliminado.');
+        fetchPatients(debouncedSearchTerm);
       } else {
-        setError(data.msg || 'Error al eliminar paciente.');
+        setError(data.msg || 'Error al eliminar.');
       }
     } catch (err) {
-      console.error('Error de red:', err);
-      setError('No se pudo conectar con el servidor para eliminar.');
+      setError('No se pudo conectar con el servidor.');
     }
   };
 
-  if (loading) {
-    return (
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Typography>Cargando pacientes...</Typography>
-      </Container>
-    );
-  }
+  if (loading && patients.length === 0) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}><CircularProgress /></Box>;
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ my: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Gestión de Pacientes
-        </Typography>
-        {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+        <Box>
+            <Typography variant="h4" component="h1" fontWeight="bold" color="text.primary">
+            Directorio de Pacientes
+            </Typography>
+            <Typography variant="subtitle1" color="text.secondary">
+            Administración de historias y datos personales
+            </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={handleOpenAddDialog}
+          sx={{ borderRadius: 2, px: 3, py: 1, boxShadow: '0 4px 12px rgba(0, 167, 157, 0.3)' }}
+        >
+          Nuevo Paciente
+        </Button>
+      </Box>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-          <TextField
-            label="Buscar paciente"
-            variant="outlined"
-            size="small"
+      {success && <Alert severity="success" sx={{ mb: 3 }}>{success}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+
+      {/* BUSCADOR */}
+      <Paper elevation={0} sx={{ p: 2, mb: 4, borderRadius: 3, bgcolor: '#f5f5f5', border: '1px solid rgba(0,0,0,0.05)' }}>
+        <TextField
+            fullWidth
+            placeholder="Buscar paciente por nombre, cédula o email..."
+            variant="standard"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
+                disableUnderline: true,
+                startAdornment: (
+                    <InputAdornment position="start">
+                        <SearchIcon color="action" />
+                    </InputAdornment>
+                ),
+                style: { fontSize: '1.1rem' }
             }}
-            sx={{ width: '300px' }}
-          />
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            onClick={handleOpenAddDialog}
-          >
-            Agregar Paciente
-          </Button>
-        </Box>
+        />
+      </Paper>
 
-        <TableContainer component={Paper}>
-          <Table sx={{ minWidth: 650 }} aria-label="simple table">
-            <TableHead>
-              <TableRow>
-                <TableCell>Cédula</TableCell>
-                <TableCell>Nombre</TableCell>
-                <TableCell>Apellido</TableCell>
-                <TableCell>Fecha Nac.</TableCell>
-                <TableCell>Género</TableCell>
-                <TableCell>Teléfono</TableCell>
-                <TableCell>Email</TableCell>
-                {user && user.rol === 'admin' && ( // Condicional para admin
-                  <>
-                    <TableCell>Creado por</TableCell>
-                    <TableCell>Última Modificación</TableCell>
-                  </>
+      <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 3, overflow: 'hidden' }}>
+        <Table sx={{ minWidth: 650 }}>
+          <TableHead sx={{ bgcolor: '#f9fafb' }}>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 'bold', color: '#666' }}>PACIENTE</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: '#666' }}>CONTACTO</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: '#666' }}>GÉNERO</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: '#666' }}>NACIMIENTO</TableCell>
+              {user && user.rol === 'admin' && <TableCell sx={{ fontWeight: 'bold', color: '#666' }}>AUDITORÍA</TableCell>}
+              <TableCell align="center" sx={{ fontWeight: 'bold', color: '#666' }}>ACCIONES</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {patients.map((patient) => (
+              <TableRow key={patient.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 }, transition: 'background-color 0.2s' }}>
+                <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Avatar 
+                            sx={{ 
+                                bgcolor: stringToColor(patient.nombre + patient.apellido),
+                                width: 40, height: 40, fontSize: '1rem'
+                            }}
+                        >
+                            {patient.nombre[0]}{patient.apellido[0]}
+                        </Avatar>
+                        <Box>
+                            <Typography variant="subtitle2" fontWeight="bold">
+                                {patient.nombre} {patient.apellido}
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary', fontSize: '0.8rem' }}>
+                                <BadgeIcon fontSize="inherit" /> {patient.cedula}
+                            </Box>
+                        </Box>
+                    </Box>
+                </TableCell>
+                <TableCell>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: '0.85rem' }}>
+                            <PhoneIcon fontSize="inherit" color="action" /> {patient.telefono || '-'}
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: '0.85rem' }}>
+                            <EmailIcon fontSize="inherit" color="action" /> {patient.email || '-'}
+                        </Box>
+                    </Box>
+                </TableCell>
+                <TableCell>
+                    <Chip 
+                        label={patient.genero || 'N/A'} 
+                        size="small" 
+                        variant="outlined"
+                        color={patient.genero === 'Femenino' ? 'secondary' : patient.genero === 'Masculino' ? 'primary' : 'default'}
+                    />
+                </TableCell>
+                <TableCell>
+                    {patient.fecha_nacimiento ? new Date(patient.fecha_nacimiento).toLocaleDateString() : 'N/A'}
+                </TableCell>
+                
+                {user && user.rol === 'admin' && (
+                    <TableCell>
+                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, fontSize: '0.75rem', color: 'text.secondary' }}>
+                           <Typography variant="caption" display="block">
+                               <strong>Creado:</strong> {new Date(patient.fecha_creacion).toLocaleDateString()} 
+                               {patient.created_by_nombre && ` por ${patient.created_by_nombre} ${patient.created_by_apellido}`}
+                           </Typography>
+                           {patient.updated_at && (
+                               <Typography variant="caption" display="block">
+                                   <strong>Editado:</strong> {new Date(patient.updated_at).toLocaleDateString()}
+                                   {patient.updated_by_nombre && ` por ${patient.updated_by_nombre} ${patient.updated_by_apellido}`}
+                               </Typography>
+                           )}
+                       </Box>
+                    </TableCell>
                 )}
-                <TableCell>Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {patients.map((patient) => (
-                <TableRow
-                  key={patient.id}
-                  sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                >
-                  <TableCell component="th" scope="row">
-                    {patient.cedula}
-                  </TableCell>
-                  <TableCell>{patient.nombre}</TableCell>
-                  <TableCell>{patient.apellido}</TableCell>
-                  <TableCell>{patient.fecha_nacimiento ? new Date(patient.fecha_nacimiento).toLocaleDateString() : 'N/A'}</TableCell>
-                  <TableCell>{patient.genero || 'N/A'}</TableCell>
-                  <TableCell>{patient.telefono || 'N/A'}</TableCell>
-                  <TableCell>{patient.email || 'N/A'}</TableCell>
-                  {user && user.rol === 'admin' && ( // Condicional para admin
-                    <>
-                      <TableCell>
-                        {patient.created_by_nombre && patient.created_by_apellido
-                          ? `${patient.created_by_nombre} ${patient.created_by_apellido}`
-                          : 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        {patient.updated_at
-                          ? `${new Date(patient.updated_at).toLocaleDateString()} ${new Date(patient.updated_at).toLocaleTimeString()}`
-                          : 'N/A'}
-                        {patient.updated_by_nombre && patient.updated_by_apellido
-                          ? ` por ${patient.updated_by_nombre} ${patient.updated_by_apellido}`
-                          : ''}
-                      </TableCell>
-                    </>
-                  )}
-                  <TableCell>
-                    <IconButton
-                      color="primary"
-                      onClick={() => handleOpenEditDialog(patient)}
-                    >
+
+                <TableCell align="center">
+                  <Tooltip title="Editar">
+                    <IconButton color="primary" onClick={() => handleOpenEditDialog(patient)}>
                       <EditIcon />
                     </IconButton>
-                    {user && user.rol === 'admin' && (
-                      <IconButton
-                        color="error"
-                        onClick={() => handleDeletePatient(patient.id)}
-                      >
+                  </Tooltip>
+                  {user && user.rol === 'admin' && (
+                    <Tooltip title="Eliminar">
+                        <IconButton color="error" onClick={() => handleDeletePatient(patient.id)}>
                         <DeleteIcon />
-                      </IconButton>
-                    )}
-                  </TableCell>
+                        </IconButton>
+                    </Tooltip>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            {patients.length === 0 && !loading && (
+                <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                        <Typography variant="body1" color="text.secondary">No se encontraron pacientes.</Typography>
+                    </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-        {/* Diálogo para Agregar/Editar Paciente */}
-        <Dialog open={openDialog} onClose={handleCloseDialog}>
-          <DialogTitle>{currentPatient ? 'Editar Paciente' : 'Agregar Paciente'}</DialogTitle>
-          <DialogContent>
-            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-            <TextField
-              autoFocus
-              margin="dense"
-              name="cedula"
-              label="Cédula"
-              type="text"
-              fullWidth
-              variant="standard"
-              value={formState.cedula}
-              onChange={handleChange}
-              required
-            />
-            <TextField
-              margin="dense"
-              name="nombre"
-              label="Nombre"
-              type="text"
-              fullWidth
-              variant="standard"
-              value={formState.nombre}
-              onChange={handleChange}
-              required
-            />
-            <TextField
-              margin="dense"
-              name="apellido"
-              label="Apellido"
-              type="text"
-              fullWidth
-              variant="standard"
-              value={formState.apellido}
-              onChange={handleChange}
-              required
-            />
-            <TextField
-              margin="dense"
-              name="fecha_nacimiento"
-              label="Fecha de Nacimiento"
-              type="date"
-              fullWidth
-              variant="standard"
-              InputLabelProps={{ shrink: true }}
-              value={formState.fecha_nacimiento}
-              onChange={handleChange}
-            />
-            <FormControl fullWidth margin="dense" variant="standard">
-              <InputLabel id="genero-label">Género</InputLabel>
-              <Select
-                labelId="genero-label"
-                id="genero"
-                name="genero"
-                value={formState.genero}
-                onChange={handleChange}
-                label="Género"
-              >
-                <MenuItem value="">Seleccionar</MenuItem>
-                <MenuItem value="Masculino">Masculino</MenuItem>
-                <MenuItem value="Femenino">Femenino</MenuItem>
-                <MenuItem value="Otro">Otro</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField
-              margin="dense"
-              name="telefono"
-              label="Teléfono"
-              type="text"
-              fullWidth
-              variant="standard"
-              value={formState.telefono}
-              onChange={handleChange}
-            />
-            <TextField
-              margin="dense"
-              name="direccion"
-              label="Dirección"
-              type="text"
-              fullWidth
-              variant="standard"
-              value={formState.direccion}
-              onChange={handleChange}
-            />
-            <TextField
-              margin="dense"
-              name="email"
-              label="Correo Electrónico"
-              type="email"
-              fullWidth
-              variant="standard"
-              value={formState.email}
-              onChange={handleChange}
-            />
+      {/* DIÁLOGO MEJORADO (STACK LAYOUT) */}
+      <Dialog open={openDialog} onClose={handleCloseDialog} fullWidth maxWidth="md">
+          <DialogTitle sx={{ fontWeight: 'bold', pb: 1, borderBottom: '1px solid #eee' }}>
+              {currentPatient ? 'Editar Información del Paciente' : 'Registrar Nuevo Paciente'}
+          </DialogTitle>
+          
+          <DialogContent sx={{ p: 4 }}>
+            <Box component="form" noValidate autoComplete="off" sx={{ mt: 1 }}>
+                <Stack spacing={3}>
+                    
+                    {/* SECCIÓN 1 */}
+                    <Box>
+                        <Typography variant="subtitle2" color="primary" sx={{ mb: 2, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>
+                            Datos Personales
+                        </Typography>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                            <TextField 
+                                name="cedula" label="Cédula de Identidad" fullWidth variant="outlined" 
+                                value={formState.cedula} onChange={handleChange} required 
+                            />
+                            <TextField 
+                                name="fecha_nacimiento" label="Fecha de Nacimiento" type="date" fullWidth variant="outlined" 
+                                InputLabelProps={{ shrink: true }} 
+                                value={formState.fecha_nacimiento} onChange={handleChange} 
+                            />
+                        </Stack>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 2 }}>
+                            <TextField 
+                                name="nombre" label="Nombres" fullWidth variant="outlined" 
+                                value={formState.nombre} onChange={handleChange} required 
+                            />
+                            <TextField 
+                                name="apellido" label="Apellidos" fullWidth variant="outlined" 
+                                value={formState.apellido} onChange={handleChange} required 
+                            />
+                        </Stack>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 2 }}>
+                            <FormControl fullWidth variant="outlined">
+                                <InputLabel id="genero-label">Género</InputLabel>
+                                <Select 
+                                    labelId="genero-label" name="genero" value={formState.genero} onChange={handleChange} label="Género"
+                                >
+                                    <MenuItem value=""><em>Seleccionar</em></MenuItem>
+                                    <MenuItem value="Masculino">Masculino</MenuItem>
+                                    <MenuItem value="Femenino">Femenino</MenuItem>
+                                    <MenuItem value="Otro">Otro</MenuItem>
+                                </Select>
+                            </FormControl>
+                            <Box sx={{ width: '100%' }} /> 
+                        </Stack>
+                    </Box>
+
+                    <Divider />
+
+                    {/* SECCIÓN 2 */}
+                    <Box>
+                        <Typography variant="subtitle2" color="primary" sx={{ mb: 2, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 }}>
+                            Información de Contacto
+                        </Typography>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                            <TextField 
+                                name="telefono" label="Teléfono / Celular" fullWidth variant="outlined" 
+                                value={formState.telefono} onChange={handleChange} 
+                            />
+                            <TextField 
+                                name="email" label="Correo Electrónico" type="email" fullWidth variant="outlined" 
+                                value={formState.email} onChange={handleChange} 
+                            />
+                        </Stack>
+                        <Box sx={{ mt: 2 }}>
+                            <TextField 
+                                name="direccion" label="Dirección Domiciliaria" fullWidth variant="outlined" multiline rows={2}
+                                value={formState.direccion} onChange={handleChange} 
+                            />
+                        </Box>
+                    </Box>
+
+                </Stack>
+            </Box>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog}>Cancelar</Button>
-            <Button onClick={handleSavePatient} variant="contained">
-              Guardar
+          
+          <DialogActions sx={{ p: 3, borderTop: '1px solid #eee', bgcolor: '#fafafa' }}>
+            <Button onClick={handleCloseDialog} variant="outlined" color="inherit" sx={{ mr: 1 }}>Cancelar</Button>
+            <Button onClick={handleSavePatient} variant="contained" color="primary" size="large" sx={{ px: 4 }}>
+                {currentPatient ? 'Guardar Cambios' : 'Registrar Paciente'}
             </Button>
           </DialogActions>
         </Dialog>
-      </Box>
     </Container>
   );
 }

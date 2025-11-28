@@ -109,7 +109,7 @@ function NavigationBar() {
                 component={Link}
                 to="/dashboard"
                 sx={{ 
-                    fontWeight: 800, 
+                    fontWeight: 700, 
                     color: '#00A79D', 
                     letterSpacing: '0.5px',
                     textTransform: 'uppercase',

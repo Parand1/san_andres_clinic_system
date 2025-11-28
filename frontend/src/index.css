@@ -12,14 +12,6 @@ code {
     monospace;
 }
 
-/* Estilos personalizados para FullCalendar */
-.fc-timegrid-event-harness {
-  width: 100% !important;
-  left: 0 !important;
-  right: 0 !important;
-  margin-bottom: 2px; /* Opcional: para añadir un pequeño espacio entre eventos apilados */
-}
-
 /* Ocultar icono nativo de 'mostrar contraseña' en Edge/IE */
 input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear {
@@ -31,4 +23,104 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
     visibility: hidden;
     position: absolute;
     right: 0;
+}
+
+/* --- PERSONALIZACIÓN FULLCALENDAR (Google Calendar Style) --- */
+
+.fc {
+  --fc-border-color: #e0e0e0; /* Bordes muy suaves */
+  --fc-today-bg-color: rgba(0, 167, 157, 0.05); /* Fondo de "Hoy" turquesa muy claro */
+  --fc-event-border-color: transparent;
+}
+
+/* Cabecera del Calendario */
+.fc-header-toolbar {
+  margin-bottom: 1.5em !important;
+}
+
+.fc-toolbar-title {
+  font-size: 1.5rem !important;
+  font-weight: 600;
+  color: #333;
+  text-transform: capitalize;
+}
+
+/* Botones de Navegación */
+.fc-button {
+  background-color: white !important;
+  color: #555 !important;
+  border: 1px solid #ddd !important;
+  box-shadow: none !important;
+  font-weight: 500 !important;
+  text-transform: capitalize !important;
+  padding: 0.4em 1em !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease;
+}
+
+.fc-button:hover {
+  background-color: #f5f5f5 !important;
+  border-color: #ccc !important;
+  color: #333 !important;
+}
+
+.fc-button-active {
+  background-color: #e3f2fd !important; /* Azul muy claro al estar activo */
+  color: #1976d2 !important;
+  border-color: #1976d2 !important;
+}
+
+.fc-button-primary:not(:disabled).fc-button-active, 
+.fc-button-primary:not(:disabled):active {
+    background-color: #e3f2fd !important;
+    border-color: #1976d2 !important;
+    color: #1976d2 !important;
+}
+
+/* Eventos (Citas) */
+.fc-timegrid-event {
+  border-radius: 6px !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  border: none !important; /* Quitar borde por defecto */
+  padding: 2px 4px;
+  transition: transform 0.1s ease-in-out;
+}
+
+.fc-timegrid-event:hover {
+  transform: scale(1.02); /* Pequeño zoom al pasar el mouse */
+  z-index: 5;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.fc-event-main {
+  padding: 2px 4px;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+/* Etiquetas de Hora */
+.fc-timegrid-slot-label {
+  font-size: 0.8rem;
+  color: #777;
+  font-weight: 500;
+}
+
+/* Encabezados de Día */
+.fc-col-header-cell-cushion {
+  color: #333;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  padding: 10px 0 !important;
+}
+
+/* Línea de "Ahora" */
+.fc-timegrid-now-indicator-line {
+  border-color: #f44336; /* Rojo vivo */
+  border-width: 2px;
+}
+
+.fc-timegrid-now-indicator-arrow {
+  border-color: #f44336;
+  border-width: 6px;
 }

@@ -23,12 +23,15 @@ import {
   MenuItem,
   Chip,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Stack,
+  Tooltip
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import ToggleOnIcon from '@mui/icons-material/ToggleOn';
 import ToggleOffIcon from '@mui/icons-material/ToggleOff';
 import AddIcon from '@mui/icons-material/Add';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import { useAuth } from '../AuthContext';
 
 function TarifarioManagement() {
@@ -151,108 +154,150 @@ function TarifarioManagement() {
     }
   };
 
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 5 }}><CircularProgress /></Box>;
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4">Gestión de Tarifario</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpen()}>
+      
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+        <Box>
+            <Typography variant="h4" component="h1" fontWeight="bold" color="text.primary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <LocalOfferIcon fontSize="large" color="primary" /> Tarifario de Servicios
+            </Typography>
+            <Typography variant="subtitle1" color="text.secondary">
+                Gestión de precios, consultas y procedimientos
+            </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={() => handleOpen()}
+          sx={{ borderRadius: 2, px: 3, py: 1, boxShadow: '0 4px 12px rgba(0, 167, 157, 0.3)' }}
+        >
           Nuevo Servicio
         </Button>
       </Box>
 
-      {loading ? <CircularProgress /> : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Nombre</TableCell>
-                <TableCell>Tipo</TableCell>
-                <TableCell>Especialidad</TableCell>
-                <TableCell>Precio</TableCell>
-                <TableCell>Estado</TableCell>
-                <TableCell>Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {items.map((item) => {
-                const spec = specialties.find(s => s.id === item.especialidad_id);
-                return (
-                  <TableRow key={item.id} sx={{ opacity: item.activo ? 1 : 0.6 }}>
-                    <TableCell>{item.nombre}</TableCell>
-                    <TableCell>{item.tipo}</TableCell>
-                    <TableCell>{spec ? spec.nombre : '-'}</TableCell>
-                    <TableCell>${item.precio}</TableCell>
-                    <TableCell>
+      <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 3, overflow: 'hidden' }}>
+        <Table sx={{ minWidth: 650 }}>
+          <TableHead sx={{ bgcolor: '#f9fafb' }}>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 'bold', color: '#666' }}>SERVICIO</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: '#666' }}>TIPO</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: '#666' }}>ESPECIALIDAD</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 'bold', color: '#666' }}>PRECIO UNIT.</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 'bold', color: '#666' }}>ESTADO</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 'bold', color: '#666' }}>ACCIONES</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {items.map((item) => {
+              const spec = specialties.find(s => s.id === item.especialidad_id);
+              return (
+                <TableRow key={item.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 }, opacity: item.activo ? 1 : 0.6, transition: 'opacity 0.2s' }}>
+                  <TableCell>
+                      <Typography variant="subtitle2" fontWeight="bold">
+                          {item.nombre}
+                      </Typography>
+                  </TableCell>
+                  <TableCell>
                       <Chip 
-                        label={item.activo ? 'Activo' : 'Inactivo'} 
-                        color={item.activo ? 'success' : 'default'} 
+                        label={item.tipo} 
                         size="small" 
+                        variant="outlined"
+                        color={item.tipo === 'Consulta' ? 'primary' : 'default'}
                       />
-                    </TableCell>
-                    <TableCell>
-                      <IconButton onClick={() => handleOpen(item)} color="primary">
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton onClick={() => handleToggleActive(item.id)} color={item.activo ? 'warning' : 'success'}>
-                        {item.activo ? <ToggleOffIcon /> : <ToggleOnIcon />}
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+                  </TableCell>
+                  <TableCell sx={{ color: 'text.secondary' }}>
+                      {spec ? spec.nombre : 'General'}
+                  </TableCell>
+                  <TableCell align="right">
+                      <Typography fontWeight="bold" color="success.main">
+                        ${parseFloat(item.precio).toFixed(2)}
+                      </Typography>
+                  </TableCell>
+                  <TableCell align="center">
+                    <Chip 
+                      label={item.activo ? 'Activo' : 'Inactivo'} 
+                      color={item.activo ? 'success' : 'default'} 
+                      size="small" 
+                      sx={{ fontWeight: 500 }}
+                    />
+                  </TableCell>
+                  <TableCell align="center">
+                    <Tooltip title="Editar">
+                        <IconButton onClick={() => handleOpen(item)} color="primary">
+                            <EditIcon />
+                        </IconButton>
+                    </Tooltip>
+                    <Tooltip title={item.activo ? "Desactivar" : "Activar"}>
+                        <IconButton onClick={() => handleToggleActive(item.id)} color={item.activo ? 'warning' : 'success'}>
+                            {item.activo ? <ToggleOffIcon /> : <ToggleOnIcon />}
+                        </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-      <Dialog open={openDialog} onClose={handleClose}>
-        <DialogTitle>{currentItem ? 'Editar Servicio' : 'Nuevo Servicio'}</DialogTitle>
-        <DialogContent sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 400 }}>
-          {error && <Alert severity="error">{error}</Alert>}
-          <TextField
-            label="Nombre del Servicio"
-            name="nombre"
-            value={formData.nombre}
-            onChange={handleChange}
-            fullWidth
-            autoFocus
-          />
-          <Box sx={{ display: 'flex', gap: 2 }}>
+      <Dialog open={openDialog} onClose={handleClose} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 'bold', borderBottom: '1px solid #eee' }}>
+            {currentItem ? 'Editar Servicio' : 'Nuevo Servicio'}
+        </DialogTitle>
+        <DialogContent sx={{ p: 4 }}>
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          <Stack spacing={3} sx={{ mt: 1 }}>
             <TextField
-                label="Precio ($)"
-                name="precio"
-                type="number"
-                value={formData.precio}
+                label="Nombre del Servicio"
+                name="nombre"
+                value={formData.nombre}
                 onChange={handleChange}
                 fullWidth
+                variant="outlined"
+                autoFocus
             />
-            <FormControl fullWidth>
-                <InputLabel>Tipo</InputLabel>
-                <Select name="tipo" value={formData.tipo} onChange={handleChange} label="Tipo">
-                <MenuItem value="Consulta">Consulta</MenuItem>
-                <MenuItem value="Procedimiento">Procedimiento</MenuItem>
-                <MenuItem value="Insumo">Insumo</MenuItem>
+            <Stack direction="row" spacing={2}>
+                <TextField
+                    label="Precio ($)"
+                    name="precio"
+                    type="number"
+                    value={formData.precio}
+                    onChange={handleChange}
+                    fullWidth
+                    variant="outlined"
+                />
+                <FormControl fullWidth variant="outlined">
+                    <InputLabel>Tipo</InputLabel>
+                    <Select name="tipo" value={formData.tipo} onChange={handleChange} label="Tipo">
+                        <MenuItem value="Consulta">Consulta</MenuItem>
+                        <MenuItem value="Procedimiento">Procedimiento</MenuItem>
+                        <MenuItem value="Insumo">Insumo</MenuItem>
+                    </Select>
+                </FormControl>
+            </Stack>
+            <FormControl fullWidth variant="outlined">
+                <InputLabel>Especialidad (Opcional)</InputLabel>
+                <Select
+                name="especialidad_id"
+                value={formData.especialidad_id}
+                onChange={handleChange}
+                label="Especialidad (Opcional)"
+                >
+                <MenuItem value=""><em>Ninguna (General)</em></MenuItem>
+                {specialties.map(s => (
+                    <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>
+                ))}
                 </Select>
             </FormControl>
-          </Box>
-          <FormControl fullWidth>
-            <InputLabel>Especialidad (Opcional)</InputLabel>
-            <Select
-              name="especialidad_id"
-              value={formData.especialidad_id}
-              onChange={handleChange}
-              label="Especialidad (Opcional)"
-            >
-              <MenuItem value=""><em>Ninguna</em></MenuItem>
-              {specialties.map(s => (
-                <MenuItem key={s.id} value={s.id}>{s.nombre}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained">Guardar</Button>
+        <DialogActions sx={{ p: 3, borderTop: '1px solid #eee', bgcolor: '#fafafa' }}>
+          <Button onClick={handleClose} variant="outlined" color="inherit">Cancelar</Button>
+          <Button onClick={handleSave} variant="contained" color="primary">Guardar</Button>
         </DialogActions>
       </Dialog>
     </Container>
