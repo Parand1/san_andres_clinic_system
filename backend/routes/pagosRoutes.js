@@ -86,11 +86,29 @@ router.post('/:id/registrar', authenticateToken, authorizeRoles('admin', 'secret
         await audit(userId, `Pago registrado para cita en estado: ${estadoActual}`, 'Cita', pagoActualizado.cita_id);
     }
 
-    // 3. Crear la transacción de caja
+    // OBTENER DETALLES PARA LA DESCRIPCIÓN DE CAJA
+    const detailsQuery = await client.query(
+        `SELECT p.nombre as p_nombre, p.apellido as p_apellido, 
+                doc.nombre as doc_nombre, doc.apellido as doc_apellido,
+                c.tipo_atencion
+         FROM citas c
+         JOIN pacientes p ON c.paciente_id = p.id
+         JOIN profesionales doc ON c.profesional_id = doc.id
+         WHERE c.id = $1`,
+        [pagoActualizado.cita_id]
+    );
+    
+    let description = `Pago de cita #${pagoActualizado.cita_id}`;
+    if (detailsQuery.rows.length > 0) {
+        const d = detailsQuery.rows[0];
+        description = `Pago ${d.tipo_atencion} - P: ${d.p_nombre} ${d.p_apellido} - Dr: ${d.doc_nombre} ${d.doc_apellido}`;
+    }
+
+    // 3. Crear la transacción de caja. TIPO SIEMPRE ES 'Ingreso por Consulta' en esta ruta
     await client.query(
       `INSERT INTO transacciones_caja (tipo_transaccion, monto, metodo_pago, descripcion, usuario_id, pago_id)
        VALUES ('Ingreso por Consulta', $1, $2, $3, $4, $5)`,
-      [pagoActualizado.monto_total, metodo_pago, `Pago de cita #${pagoActualizado.cita_id}`, userId, id]
+      [pagoActualizado.monto_total, metodo_pago, description, userId, id]
     );
 
     // 4. Registrar auditoría para el pago y la cita
@@ -150,10 +168,36 @@ router.post('/adicional', authenticateToken, authorizeRoles('admin', 'secretaria
 
         // 3. Crear la transacción de caja SOLO SI se pagó efectivamente
         if (estadoPago === 'Pagado') {
+            // OBTENER DATOS DEL PACIENTE PARA DESCRIPCIÓN
+            const detailsQuery = await client.query(
+                `SELECT p.nombre, p.apellido FROM pacientes p WHERE p.id = $1`,
+                [paciente_id]
+            );
+            
+            let patientName = "Paciente";
+            if (detailsQuery.rows.length > 0) {
+                 const p = detailsQuery.rows[0];
+                 patientName = `${p.nombre} ${p.apellido}`;
+            }
+
+            const itemSummary = items.map(i => i.descripcion).join(', ');
+            
+            // Lógica inteligente: Detectar si lo que se está cobrando es una Consulta o algo Adicional
+            // Palabras clave para identificar una consulta estándar
+            const isConsulta = items.some(i => /consulta|emergencia|control|visita|cita/i.test(i.descripcion));
+
+            let tipoTransaccion = 'Ingreso Adicional';
+            let fullDesc = `Cobro Adicional: ${itemSummary} - P: ${patientName}`;
+
+            if (isConsulta) {
+                tipoTransaccion = 'Ingreso por Consulta';
+                fullDesc = `Pago ${itemSummary} - P: ${patientName}`;
+            }
+
             await client.query(
                 `INSERT INTO transacciones_caja (tipo_transaccion, monto, metodo_pago, descripcion, usuario_id, pago_id)
-                 VALUES ('Ingreso Adicional', $1, $2, $3, $4, $5)`,
-                [monto_total, metodoPagoFinal, `Cobro adicional para cita #${cita_id}`, userId, pagoId]
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [tipoTransaccion, monto_total, metodoPagoFinal, fullDesc, userId, pagoId]
             );
         }
 

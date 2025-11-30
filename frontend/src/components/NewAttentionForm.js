@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Container,
   Typography,
@@ -42,7 +42,7 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
   });
   const [medicalHistoryDetails, setMedicalHistoryDetails] = useState({});
   const [antecedents, setAntecedents] = useState({});
-  const [odontogram, setOdontogram] = useState({});
+  // const [odontogram, setOdontogram] = useState({}); // ELIMINADO
   const [psychologyEvaluation, setPsychologyEvaluation] = useState({});
   const [diagnoses, setDiagnoses] = useState([]);
 
@@ -79,7 +79,7 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
 
   const handleMedicalHistoryDetailsChange = (data) => setMedicalHistoryDetails(data);
   const handleAntecedentsChange = (data) => setAntecedents(data);
-  const handleOdontogramChange = (data) => setOdontogram(data);
+  // Odontograma se maneja via ref, no necesitamos estado redundante aqui
   const handlePsychologyEvaluationChange = (data) => setPsychologyEvaluation(data);
   const handleDiagnosesChange = (data) => setDiagnoses(data);
 
@@ -124,7 +124,8 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
       const savePromises = [];
       if (antecedentsFormRef.current) savePromises.push(antecedentsFormRef.current.save(patient.id));
       if (medicalHistoryDetailsFormRef.current) savePromises.push(medicalHistoryDetailsFormRef.current.save(attentionIdToUse));
-      if (user.especialidades?.includes('Odontologia') && odontogramFormRef.current) savePromises.push(odontogramFormRef.current.save(attentionIdToUse));
+      // Corrección: Guardar si la referencia existe, confiando en la lógica de renderizado
+      if (odontogramFormRef.current) savePromises.push(odontogramFormRef.current.save(attentionIdToUse));
       if (user.especialidades?.includes('Psicologia') && psychologyEvaluationFormRef.current) savePromises.push(psychologyEvaluationFormRef.current.save(attentionIdToUse));
       if (diagnosisManagementRef.current) savePromises.push(diagnosisManagementRef.current.save(attentionIdToUse, diagnoses));
 
@@ -235,7 +236,7 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
                   <Typography variant="h6" color="primary">Odontograma</Typography>
                 </AccordionSummary>
                 <AccordionDetails>
-                  <OdontogramForm attentionId={currentAttentionId} onDataChange={handleOdontogramChange} />
+                  <OdontogramForm ref={odontogramFormRef} attentionId={currentAttentionId} patientId={patient.id} />
                 </AccordionDetails>
               </Accordion>
             )}
@@ -299,7 +300,7 @@ function NewAttentionForm({ patient, attention: existingAttention, onSaveSuccess
                 startIcon={!isSaving && <SaveIcon />}
                 sx={{ borderRadius: 3, px: 4, fontWeight: 'bold' }}
             >
-                {isSaving ? <CircularProgress size={24} color="inherit" /> : 'Guardar Historia Clínica'}
+                {isSaving ? <CircularProgress size={24} color="inherit" /> : <span>Guardar Historia Clínica</span>}
             </Button>
         </Paper>
       </form>

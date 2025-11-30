@@ -65,16 +65,14 @@ function AttentionDetail({ attention, onBack }) {
           </AccordionDetails>
         </Accordion>
 
-        {attention.profesional_especialidades?.includes('Odontologia') && (
-          <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="h6">Odontograma</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <OdontogramForm attentionId={attention.id} readOnly={true} />
-            </AccordionDetails>
-          </Accordion>
-        )}
+        <Accordion>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="h6">Odontograma</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <OdontogramForm attentionId={attention.id} readOnly={true} />
+          </AccordionDetails>
+        </Accordion>
 
         {attention.profesional_especialidades?.includes('Psicologia') && (
           <Accordion>

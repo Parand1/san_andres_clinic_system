@@ -2,376 +2,449 @@ import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'rea
 import {
   Box,
   Typography,
-  Button,
-  Alert,
-  CircularProgress,
-  Grid,
   Paper,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Chip, // Importar Chip
-  ListSubheader, // Importar ListSubheader
+  CircularProgress,
+  ToggleButton,
+  ToggleButtonGroup,
+  Divider
 } from '@mui/material';
 import { useAuth } from '../AuthContext';
 
-// Mover estas definiciones fuera del componente Tooth para que sean accesibles globalmente
-const surfaces = ['occlusal', 'distal', 'mesial', 'lingual', 'buccal']; // Ejemplo de superficies
-const conditions = ['Caries', 'Restauración', 'Fractura', 'Ausente', 'Extracción', 'Sellante']; // Ejemplo de condiciones
+// Íconos para las herramientas
+import CircleIcon from '@mui/icons-material/Circle';
+import CloseIcon from '@mui/icons-material/Close';
+import VerifiedIcon from '@mui/icons-material/Verified';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 
-// Helper para generar la numeración de dientes (FDI)
-const generateToothNumbers = (type = 'permanente') => {
-  const teeth = [];
-  if (type === 'permanente') {
-    // Cuadrantes 1, 2, 3, 4
-    for (let i = 1; i <= 4; i++) {
-      for (let j = 1; j <= 8; j++) {
-        teeth.push({ numero: `${i}${j}`, tipo: 'permanente' });
-      }
-    }
-  } else { // Deciduo
-    // Cuadrantes 5, 6, 7, 8
-    for (let i = 5; i <= 8; i++) {
-      for (let j = 1; j <= 5; j++) {
-        teeth.push({ numero: `${i}${j}`, tipo: 'deciduo' });
-      }
-    }
-  }
-  return teeth;
+// --- CONFIGURACIÓN DEL ODONTOGRAMA ---
+
+const TOOLS = {
+  CARIES: { id: 'caries', label: 'Caries (Rojo)', color: '#d32f2f', icon: <CircleIcon sx={{ color: '#d32f2f' }} /> },
+  RESTAURACION: { id: 'restauracion', label: 'Restauración (Azul)', color: '#1976d2', icon: <CircleIcon sx={{ color: '#1976d2' }} /> },
+  SELLANTE: { id: 'sellante', label: 'Sellante', color: '#388e3c', icon: <VerifiedIcon sx={{ color: '#388e3c' }} /> },
+  AUSENTE: { id: 'ausente', label: 'Diente Ausente/Extracción', color: '#9e9e9e', icon: <CloseIcon /> },
+  BORRAR: { id: 'borrar', label: 'Limpiar Superficie', color: 'inherit', icon: <DeleteOutlineIcon /> },
 };
 
-// Componente para representar un solo diente
-const Tooth = ({ tooth, selected, onClick, onConditionChange }) => {
+// Definición de Cuadrantes y Dientes (FDI)
+const QUADRANTS = {
+  Q1: [18, 17, 16, 15, 14, 13, 12, 11], // Superior Derecho
+  Q2: [21, 22, 23, 24, 25, 26, 27, 28], // Superior Izquierdo
+  Q3: [48, 47, 46, 45, 44, 43, 42, 41], // Inferior Derecho (Orden invertido visualmente)
+  Q4: [31, 32, 33, 34, 35, 36, 37, 38], // Inferior Izquierdo
+  // Temporales
+  Q5: [55, 54, 53, 52, 51],
+  Q6: [61, 62, 63, 64, 65],
+  Q7: [85, 84, 83, 82, 81],
+  Q8: [71, 72, 73, 74, 75],
+};
+
+// --- COMPONENTE VISUAL DE UN DIENTE (SVG) ---
+const ToothGraphic = ({ toothNumber, data, onSurfaceClick }) => {
+  // Lógica para determinar colores de superficies
+  const getSurfaceColor = (surface) => {
+    if (data.estado_general === 'ausente') return '#eeeeee'; // Diente completo gris si ausente
+    const conditions = data.condiciones_superficies?.[surface] || [];
+    
+    if (conditions.includes('caries')) return '#ef5350'; // Rojo claro
+    if (conditions.includes('restauracion')) return '#42a5f5'; // Azul claro
+    if (conditions.includes('sellante')) return '#66bb6a'; // Verde claro
+    return '#ffffff'; // Blanco por defecto
+  };
+
+  // Overlay para diente ausente (X grande)
+  const isAbsent = data.estado_general === 'ausente';
+
+  // Definición geométrica básica (0,0 a 100,100)
+  const polyOcclusal = "35,35 65,35 65,65 35,65";
+  const polyVestibular = "0,0 100,0 65,35 35,35"; // Arriba
+  const polyLingual = "35,65 65,65 100,100 0,100"; // Abajo
+  const polyMesial = "0,0 35,35 35,65 0,100"; // Izquierda
+  const polyDistal = "100,0 100,100 65,65 65,35"; // Derecha
+  
+  const isUpper = [1, 2, 5, 6].some(q => Math.floor(toothNumber / 10) === q);
+  const isRightSide = [1, 5, 4, 8].some(q => Math.floor(toothNumber / 10) === q); 
+
+  // Asignación de caras basada en posición
+  const mapPosToSurface = (pos) => {
+      if (pos === 'center') return 'occlusal';
+      if (pos === 'top') return isUpper ? 'vestibular' : 'lingual';
+      if (pos === 'bottom') return isUpper ? 'palatino' : 'vestibular';
+      if (pos === 'left') return isRightSide ? 'distal' : 'mesial'; 
+      if (pos === 'right') return isRightSide ? 'mesial' : 'distal'; 
+      return '';
+  };
+
+  const handleClick = (pos) => {
+      const surface = mapPosToSurface(pos);
+      onSurfaceClick(toothNumber, surface);
+  };
+
   return (
-    <Paper
-      elevation={selected ? 6 : 2}
-      sx={{
-        width: 80,
-        height: 80,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        cursor: 'pointer',
-        border: selected ? '2px solid blue' : '1px solid #ccc',
-        backgroundColor: selected ? '#e3f2fd' : '#fff',
-        '&:hover': {
-          backgroundColor: '#f0f0f0',
-        },
-      }}
-      onClick={() => onClick(tooth)}
-    >
-      <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
-        {tooth.numero}
+    <Box sx={{ position: 'relative', width: 50, height: 65, m: 0.5, textAlign: 'center' }}>
+      {/* Número del diente */}
+      <Typography variant="caption" sx={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#555' }}>
+          {toothNumber}
       </Typography>
-      <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
-        {tooth.estado_general || 'Sano'}
-      </Typography>
-      {selected && (
-        <Box sx={{ mt: 1, width: '100%', px: 0.5 }}>
-          <FormControl fullWidth size="small">
-            <InputLabel>Superficie</InputLabel>
-            <Select
-              label="Superficie"
-              onChange={(e) => onConditionChange(tooth.numero, e.target.value, 'add')}
-              value="" // Resetear después de seleccionar
-            >
-              {surfaces.map((s) => (
-                <MenuItem key={s} value={s}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          {/* Aquí se podría añadir un selector de condiciones para la superficie seleccionada */}
-        </Box>
-      )}
-    </Paper>
+      
+      {/* SVG Interactivo */}
+      <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', filter: 'drop-shadow(1px 2px 2px rgba(0,0,0,0.1))' }}>
+        {/* Top */}
+        <polygon 
+            points={polyVestibular} 
+            fill={getSurfaceColor(mapPosToSurface('top'))} 
+            stroke="#757575" strokeWidth="1"
+            onClick={() => handleClick('top')}
+            style={{ cursor: 'pointer', transition: 'fill 0.2s' }}
+        />
+        {/* Bottom */}
+        <polygon 
+            points={polyLingual} 
+            fill={getSurfaceColor(mapPosToSurface('bottom'))} 
+            stroke="#757575" strokeWidth="1"
+            onClick={() => handleClick('bottom')}
+            style={{ cursor: 'pointer', transition: 'fill 0.2s' }}
+        />
+        {/* Left */}
+        <polygon 
+            points={polyMesial} 
+            fill={getSurfaceColor(mapPosToSurface('left'))} 
+            stroke="#757575" strokeWidth="1"
+            onClick={() => handleClick('left')}
+            style={{ cursor: 'pointer', transition: 'fill 0.2s' }}
+        />
+        {/* Right */}
+        <polygon 
+            points={polyDistal} 
+            fill={getSurfaceColor(mapPosToSurface('right'))} 
+            stroke="#757575" strokeWidth="1"
+            onClick={() => handleClick('right')}
+            style={{ cursor: 'pointer', transition: 'fill 0.2s' }}
+        />
+        {/* Center */}
+        <polygon 
+            points={polyOcclusal} 
+            fill={getSurfaceColor(mapPosToSurface('center'))} 
+            stroke="#757575" strokeWidth="1"
+            onClick={() => handleClick('center')}
+            style={{ cursor: 'pointer', transition: 'fill 0.2s' }}
+        />
+        
+        {/* Overlay de Ausente (X) */}
+        {isAbsent && (
+            <line x1="0" y1="0" x2="100" y2="100" stroke="#ef5350" strokeWidth="8" style={{ pointerEvents: 'none' }} />
+        )}
+        {isAbsent && (
+            <line x1="100" y1="0" x2="0" y2="100" stroke="#ef5350" strokeWidth="8" style={{ pointerEvents: 'none' }} />
+        )}
+      </svg>
+    </Box>
   );
 };
 
-function OdontogramForm({ attentionId, onDataChange, readOnly = false }, ref) {
+// --- COMPONENTE PRINCIPAL ---
+
+function OdontogramForm({ attentionId, patientId, readOnly = false }, ref) {
   const { token } = useAuth();
-  const [odontogramState, setOdontogramState] = useState({
-    observaciones_generales: '',
-    dientes: [], // Array de objetos de diente
-  });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(''); // Estado para mensajes de éxito
-  const [odontogramExists, setOdontogramExists] = useState(false); // Nuevo estado
-  const [selectedTooth, setSelectedTooth] = useState(null); // Diente seleccionado para detalle/edición
+  const [activeTool, setActiveTool] = useState('caries'); // Herramienta seleccionada por defecto
+  const [dientes, setDientes] = useState([]);
+  const [observaciones, setObservaciones] = useState('');
 
-  // Fetch existing odontogram if attentionId is provided
-  useEffect(() => {
-    const fetchOdontogram = async () => {
-      if (!attentionId) {
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      setError('');
-      try {
-        const response = await fetch(`/api/odontogram/${attentionId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await response.json();
-        if (response.ok) {
-          setOdontogramState({
-            observaciones_generales: data.observaciones_generales || '',
-            dientes: data.dientes || [],
-          });
-          setOdontogramExists(true); // El odontograma existe
-        } else if (response.status === 404) {
-          // No existing odontogram, initialize with empty teeth
-          setOdontogramState({
-            observaciones_generales: '',
-            dientes: generateToothNumbers('permanente').map(t => ({
-              ...t,
-              estado_general: 'sano',
-              condiciones_superficies: {},
-              observaciones_diente: '',
-            })),
-          });
-          setOdontogramExists(false); // El odontograma no existe
-        } else {
-          setError(data.msg || 'Error al cargar odontograma.');
-        }
-      } catch (err) {
-        console.error('Error de red:', err);
-        setError('No se pudo conectar con el servidor para cargar odontograma.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchOdontogram();
-  }, [attentionId, token]);
-
-  // Inicializar dientes si no hay odontograma existente
-  useEffect(() => {
-    if (!loading && !odontogramState.dientes.length && attentionId && !odontogramExists) {
-      setOdontogramState(prev => ({
-        ...prev,
-        dientes: generateToothNumbers('permanente').map(t => ({
-          ...t,
+  // Inicializar estructura de dientes vacía
+  const initTeeth = () => {
+      const allTeethNumbers = [
+          ...QUADRANTS.Q1, ...QUADRANTS.Q2, ...QUADRANTS.Q3, ...QUADRANTS.Q4,
+          ...QUADRANTS.Q5, ...QUADRANTS.Q6, ...QUADRANTS.Q7, ...QUADRANTS.Q8
+      ];
+      return allTeethNumbers.map(num => ({
+          numero: num.toString(),
+          tipo: num < 50 ? 'permanente' : 'deciduo',
           estado_general: 'sano',
           condiciones_superficies: {},
-          observaciones_diente: '',
-        })),
+          observaciones_diente: ''
       }));
-    }
-  }, [loading, odontogramState.dientes.length, attentionId, odontogramExists]);
-
-  const handleToothClick = (tooth) => {
-    setSelectedTooth(tooth);
   };
 
-  const handleToothDataChange = (e) => {
-    const { name, value } = e.target;
-    setSelectedTooth(prev => ({ ...prev, [name]: value }));
-    setOdontogramState(prev => ({
-      ...prev,
-      dientes: prev.dientes.map(d =>
-        d.numero === selectedTooth.numero ? { ...d, [name]: value } : d
-      ),
-    }));
-    onDataChange(odontogramState); // Notificar al padre
-  };
+  useEffect(() => {
+      // Cargar datos existentes
+      const loadData = async () => {
+          setLoading(true);
+          try {
+              let dataToLoad = null;
+              let source = 'init'; // init, specific, latest
 
-  const handleSurfaceConditionChange = (toothNumber, surface, action, condition = null) => {
-    setOdontogramState(prev => {
-      const updatedDientes = prev.dientes.map(d => {
-        if (d.numero === toothNumber) {
-          const newConditions = { ...d.condiciones_superficies };
-          if (action === 'add' && condition) {
-            newConditions[surface] = newConditions[surface] ? [...newConditions[surface], condition] : [condition];
-          } else if (action === 'remove' && condition) {
-            newConditions[surface] = newConditions[surface]?.filter(c => c !== condition);
-            if (newConditions[surface]?.length === 0) delete newConditions[surface];
+              // 1. Intentar cargar odontograma específico de la atención (Modo Edición/Lectura)
+              if (attentionId) {
+                  const res = await fetch(`/api/odontogram/${attentionId}`, {
+                      headers: { Authorization: `Bearer ${token}` }
+                  });
+                  if (res.ok) {
+                      dataToLoad = await res.json();
+                      source = 'specific';
+                  }
+              }
+
+              // 2. Si no hay específico y tenemos paciente, cargar el ÚLTIMO del historial (Modo Continuidad)
+              if (!dataToLoad && patientId && !readOnly) {
+                  const res = await fetch(`/api/odontogram/patient/${patientId}/latest`, {
+                      headers: { Authorization: `Bearer ${token}` }
+                  });
+                  if (res.ok) {
+                      dataToLoad = await res.json();
+                      source = 'latest';
+                  }
+              }
+
+              if (dataToLoad) {
+                  if (source === 'specific') {
+                      setObservaciones(dataToLoad.observaciones_generales || '');
+                  } else {
+                      setObservaciones(''); 
+                  }
+
+                  const base = initTeeth();
+                  const merged = base.map(b => {
+                      const existing = dataToLoad.dientes ? dataToLoad.dientes.find(d => d.numero_diente === b.numero) : null;
+                      if (existing) {
+                          return {
+                              ...b,
+                              estado_general: existing.estado_general,
+                              condiciones_superficies: existing.condiciones_superficies || {},
+                              observaciones_diente: source === 'specific' ? existing.observaciones_diente : ''
+                          };
+                      }
+                      return b;
+                  });
+                  setDientes(merged);
+              } else {
+                  setDientes(initTeeth());
+              }
+          } catch (e) {
+              console.error(e);
+              setDientes(initTeeth());
+          } finally {
+              setLoading(false);
           }
-          return { ...d, condiciones_superficies: newConditions };
-        }
-        return d;
-      });
-      onDataChange({ ...prev, dientes: updatedDientes }); // Notificar al padre
-      return { ...prev, dientes: updatedDientes };
-    });
-  };
+      };
+      loadData();
+  }, [attentionId, patientId, token, readOnly]);
 
-  useImperativeHandle(ref, () => ({
-    save: async (currentAttentionId) => {
+  // Lógica central de interacción
+  const handleSurfaceInteraction = (toothNum, surface) => {
       if (readOnly) return;
 
-      let url;
-      let method;
-      const payload = {
-        atencion_id: currentAttentionId,
-        observaciones_generales: odontogramState.observaciones_generales,
-        dientes: odontogramState.dientes.map(diente => ({
-          numero_diente: diente.numero,
-          tipo_diente: diente.tipo,
-          estado_general: diente.estado_general,
-          condiciones_superficies: diente.condiciones_superficies,
-          observaciones_diente: diente.observaciones_diente,
-        })),
-      };
+      setDientes(prev => prev.map(d => {
+          if (d.numero !== toothNum.toString()) return d;
 
-      if (odontogramExists) {
-        url = `/api/odontogram/${currentAttentionId}`;
-        method = 'PUT';
-      } else {
-        url = `/api/odontogram`;
-        method = 'POST';
+          const newDiente = { ...d };
+          
+          if (activeTool === 'ausente') {
+              newDiente.estado_general = newDiente.estado_general === 'ausente' ? 'sano' : 'ausente';
+              if (newDiente.estado_general === 'ausente') newDiente.condiciones_superficies = {};
+          } 
+          else if (activeTool === 'borrar') {
+              const newConds = { ...newDiente.condiciones_superficies };
+              delete newConds[surface];
+              newDiente.condiciones_superficies = newConds;
+              newDiente.estado_general = 'sano'; 
+          }
+          else {
+              const newConds = { ...newDiente.condiciones_superficies };
+              newConds[surface] = [activeTool]; 
+              newDiente.condiciones_superficies = newConds;
+              if (newDiente.estado_general === 'ausente') newDiente.estado_general = 'sano';
+          }
+
+          return newDiente;
+      }));
+  };
+
+  // Exponer método save al padre
+  useImperativeHandle(ref, () => ({
+      save: async (currentAttentionId) => {
+          const dientesModificados = dientes.filter(d => {
+              const tieneEstado = d.estado_general && d.estado_general.toLowerCase() !== 'sano';
+              const tieneSuperficies = d.condiciones_superficies && Object.keys(d.condiciones_superficies).length > 0;
+              const tieneObservacion = d.observaciones_diente && d.observaciones_diente.trim().length > 0;
+              return tieneEstado || tieneSuperficies || tieneObservacion;
+          });
+
+          console.log('Guardando Odontograma. Dientes modificados:', dientesModificados.length);
+
+          const payload = {
+              atencion_id: currentAttentionId,
+              observaciones_generales: observaciones,
+              dientes: dientesModificados.map(d => ({
+                  numero_diente: d.numero,
+                  tipo_diente: d.tipo,
+                  estado_general: d.estado_general,
+                  condiciones_superficies: d.condiciones_superficies,
+                  observaciones_diente: d.observaciones_diente
+              }))
+          };
+
+          const response = await fetch('/api/odontogram', { 
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify(payload)
+          });
+          
+          if (!response.ok) {
+              if (response.status === 405 || response.status === 409) {
+                   const putRes = await fetch(`/api/odontogram/${currentAttentionId}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify(payload)
+                  });
+                  if (!putRes.ok) throw new Error('Error al guardar odontograma');
+                  return await putRes.json();
+              }
+              const errData = await response.json();
+              throw new Error(errData.msg || 'Error al guardar');
+          }
+          return await response.json();
       }
+  }), [dientes, observaciones, token]);
 
-      try {
-        const response = await fetch(url, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.msg || 'Error al guardar el odontograma.');
-        }
-        // NO ACTUALIZAR ESTADO AQUÍ. El componente está a punto de ser desmontado.
-        return data;
-      } catch (err) {
-        console.error('Error saving odontogram:', err);
-        throw err;
-      }
-    },
-  }));
-
-
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  if (loading) return <CircularProgress />;
 
   return (
-    <Box sx={{ mt: 3 }}>
-      <Typography variant="h5" gutterBottom>
-        Odontograma
-      </Typography>
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-
-      <TextField
-        margin="dense"
-        name="observaciones_generales"
-        label="Observaciones Generales del Odontograma"
-        type="text"
-        fullWidth
-        multiline
-        rows={3}
-        variant="outlined"
-        value={odontogramState.observaciones_generales}
-        onChange={(e) => {
-          setOdontogramState(prev => ({ ...prev, observaciones_generales: e.target.value }));
-          onDataChange(odontogramState); // Notificar al padre
-        }}
-        sx={{ mb: 2 }}
-      />
-
-      <Grid container spacing={1} justifyContent="center">
-        {generateToothNumbers('permanente').map((tooth) => (
-          <Grid item key={tooth.numero}>
-            <Tooth
-              tooth={odontogramState.dientes.find(d => d.numero === tooth.numero) || tooth}
-              selected={selectedTooth?.numero === tooth.numero}
-              onClick={handleToothClick}
-              onConditionChange={handleSurfaceConditionChange}
-            />
-          </Grid>
-        ))}
-      </Grid>
-
-      {selectedTooth && (
-        <Paper elevation={3} sx={{ p: 2, mt: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Detalle del Diente {selectedTooth.numero}
-          </Typography>
-          <FormControl fullWidth margin="dense">
-            <InputLabel>Estado General</InputLabel>
-            <Select
-              name="estado_general"
-              value={selectedTooth.estado_general || ''}
-              onChange={handleToothDataChange}
-              label="Estado General"
+    <Box sx={{ userSelect: 'none' }}>
+        
+        {/* BARRA DE HERRAMIENTAS */}
+        <Paper elevation={3} sx={{ p: 2, mb: 3, display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f5f5' }}>
+            <Typography variant="subtitle2" sx={{ mr: 2, fontWeight: 'bold' }}>HERRAMIENTAS:</Typography>
+            <ToggleButtonGroup
+                value={activeTool}
+                exclusive
+                onChange={(e, newTool) => { if (newTool) setActiveTool(newTool); }}
+                aria-label="herramientas odontograma"
             >
-              <MenuItem value="sano">Sano</MenuItem>
-              <MenuItem value="caries">Caries</MenuItem>
-              <MenuItem value="restauracion">Restauración</MenuItem>
-              <MenuItem value="ausente">Ausente</MenuItem>
-              <MenuItem value="erupcionando">Erupcionando</MenuItem>
-              <MenuItem value="retenido">Retenido</MenuItem>
-              <MenuItem value="fractura">Fractura</MenuItem>
-              {/* Más estados */}
-            </Select>
-          </FormControl>
-          <TextField
-            margin="dense"
-            name="observaciones_diente"
-            label="Observaciones del Diente"
-            type="text"
-            fullWidth
-            multiline
-            rows={2}
-            variant="outlined"
-            value={selectedTooth.observaciones_diente || ''}
-            onChange={handleToothDataChange}
-            sx={{ mt: 1 }}
-          />
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle1">Condiciones por Superficie:</Typography>
-            {Object.entries(selectedTooth.condiciones_superficies || {}).map(([surface, conds]) => (
-              <Box key={surface} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                  {surface.charAt(0).toUpperCase() + surface.slice(1)}:
-                </Typography>
-                {conds.map((cond) => (
-                  <Chip
-                    key={cond}
-                    label={cond}
-                    onDelete={() => handleSurfaceConditionChange(selectedTooth.numero, surface, 'remove', cond)}
-                    sx={{ mr: 0.5 }}
-                  />
+                {Object.values(TOOLS).map((tool) => (
+                    <ToggleButton key={tool.id} value={tool.id} sx={{ gap: 1, px: 2 }}>
+                        {tool.icon}
+                        <Typography variant="caption" fontWeight="bold">{tool.label}</Typography>
+                    </ToggleButton>
                 ))}
-              </Box>
-            ))}
-            <FormControl fullWidth margin="dense">
-              <InputLabel>Añadir Condición a Superficie</InputLabel>
-              <Select
-                value=""
-                label="Añadir Condición a Superficie"
-                onChange={(e) => {
-                  const [surf, cond] = e.target.value.split('|');
-                  if (surf && cond) handleSurfaceConditionChange(selectedTooth.numero, surf, 'add', cond);
-                }}
-              >
-                {surfaces.map((s) => (
-                  <ListSubheader key={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</ListSubheader>
-                ))}
-                {surfaces.flatMap(s => conditions.map(c => (
-                  <MenuItem key={`${s}-${c}`} value={`${s}|${c}`}>
-                    {s.charAt(0).toUpperCase() + s.slice(1)}: {c}
-                  </MenuItem>
-                )))}
-              </Select>
-            </FormControl>
-          </Box>
+            </ToggleButtonGroup>
         </Paper>
-      )}
+
+        {/* ODONTOGRAMA GRÁFICO */}
+        <Paper variant="outlined" sx={{ p: 3, mb: 3, bgcolor: '#fff', overflowX: 'auto' }}>
+            
+            {/* DENTICIÓN PERMANENTE */}
+            <Typography variant="overline" sx={{ display: 'block', textAlign: 'center', fontSize: '1rem', color: '#1565c0' }}>
+                DENTICIÓN PERMANENTE
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            
+            {/* ARCO SUPERIOR (Q1 - Q2) */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mb: 4 }}>
+                {/* Q1 (Derecha Paciente -> Izquierda Pantalla) */}
+                <Box sx={{ display: 'flex' }}>
+                    {QUADRANTS.Q1.map(num => (
+                        <ToothGraphic 
+                            key={num} toothNumber={num} 
+                            data={dientes.find(d => d.numero === num.toString()) || {}}
+                            onSurfaceClick={handleSurfaceInteraction}
+                        />
+                    ))}
+                </Box>
+                <Divider orientation="vertical" flexItem sx={{ borderRightWidth: 2, borderColor: '#000' }} />
+                {/* Q2 */}
+                <Box sx={{ display: 'flex' }}>
+                    {QUADRANTS.Q2.map(num => (
+                        <ToothGraphic 
+                            key={num} toothNumber={num} 
+                            data={dientes.find(d => d.numero === num.toString()) || {}}
+                            onSurfaceClick={handleSurfaceInteraction}
+                        />
+                    ))}
+                </Box>
+            </Box>
+
+            {/* ARCO INFERIOR (Q4 - Q3) */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mb: 6 }}>
+                {/* Q4 (Derecha Paciente -> Izquierda Pantalla) */}
+                <Box sx={{ display: 'flex' }}>
+                    {QUADRANTS.Q3.map(num => (
+                        <ToothGraphic 
+                            key={num} toothNumber={num} 
+                            data={dientes.find(d => d.numero === num.toString()) || {}}
+                            onSurfaceClick={handleSurfaceInteraction}
+                        />
+                    ))}
+                </Box>
+                <Divider orientation="vertical" flexItem sx={{ borderRightWidth: 2, borderColor: '#000' }} />
+                {/* Q3 */}
+                <Box sx={{ display: 'flex' }}>
+                    {QUADRANTS.Q4.map(num => (
+                        <ToothGraphic 
+                            key={num} toothNumber={num} 
+                            data={dientes.find(d => d.numero === num.toString()) || {}}
+                            onSurfaceClick={handleSurfaceInteraction}
+                        />
+                    ))}
+                </Box>
+            </Box>
+
+            {/* DENTICIÓN TEMPORAL (DECIDUA) */}
+            <Typography variant="overline" sx={{ display: 'block', textAlign: 'center', fontSize: '0.9rem', color: '#2e7d32', mt: 4 }}>
+                DENTICIÓN TEMPORAL (NIÑOS)
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+
+             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mb: 2 }}>
+                {/* Q5 */}
+                <Box sx={{ display: 'flex' }}>
+                    {QUADRANTS.Q5.map(num => (
+                        <ToothGraphic 
+                            key={num} toothNumber={num} 
+                            data={dientes.find(d => d.numero === num.toString()) || {}}
+                            onSurfaceClick={handleSurfaceInteraction}
+                        />
+                    ))}
+                </Box>
+                <Divider orientation="vertical" flexItem />
+                {/* Q6 */}
+                <Box sx={{ display: 'flex' }}>
+                    {QUADRANTS.Q6.map(num => (
+                        <ToothGraphic 
+                            key={num} toothNumber={num} 
+                            data={dientes.find(d => d.numero === num.toString()) || {}}
+                            onSurfaceClick={handleSurfaceInteraction}
+                        />
+                    ))}
+                </Box>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
+                {/* Q8 */}
+                <Box sx={{ display: 'flex' }}>
+                    {QUADRANTS.Q7.map(num => (
+                        <ToothGraphic 
+                            key={num} toothNumber={num} 
+                            data={dientes.find(d => d.numero === num.toString()) || {}}
+                            onSurfaceClick={handleSurfaceInteraction}
+                        />
+                    ))}
+                </Box>
+                <Divider orientation="vertical" flexItem />
+                {/* Q7 */}
+                <Box sx={{ display: 'flex' }}>
+                    {QUADRANTS.Q8.map(num => (
+                        <ToothGraphic 
+                            key={num} toothNumber={num} 
+                            data={dientes.find(d => d.numero === num.toString()) || {}}
+                            onSurfaceClick={handleSurfaceInteraction}
+                        />
+                    ))}
+                </Box>
+            </Box>
+
+        </Paper>
+
     </Box>
   );
 }
